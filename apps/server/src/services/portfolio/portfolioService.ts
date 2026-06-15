@@ -9,6 +9,7 @@ import {
   buildWalletRiskInputFromRobinhood, 
   type WalletRiskInputResult 
 } from "./walletRiskInput.js";
+import { buildWalletRiskInputFromMerchantMoe } from "../merchantMoe/scout.js";
 import { 
   runAggregateRiskPipeline, 
   type AggregateRiskPipelineResult 
@@ -28,13 +29,19 @@ export interface PortfolioDiagnoseInput {
   };
   publishReport?: boolean;
   requirePhala?: boolean;
+  requireTee?: boolean;
   phalaAttestationHash?: Hex;
+  teeAttestationHash?: Hex;
 }
 
 export class PortfolioService {
   constructor(private readonly config: ServerConfig) {}
 
   async getWalletPositions(walletAddress: Address) {
+    if (this.config.chainMode === "mantle") {
+      return buildWalletRiskInputFromMerchantMoe(this.config, walletAddress);
+    }
+
     const publicClient = createRobinhoodPublicClient(this.config);
     return buildWalletRiskInputFromRobinhood(
       this.config,
@@ -132,14 +139,14 @@ export class PortfolioService {
         riskInput: input.riskInput ?? walletRisk!.riskInput,
         sources,
         ownership,
-        phalaAttestation: input.phalaAttestationHash
+        phalaAttestation: (input.teeAttestationHash ?? input.phalaAttestationHash)
           ? {
-              attestationHash: input.phalaAttestationHash,
+              attestationHash: (input.teeAttestationHash ?? input.phalaAttestationHash)!,
               verifier: this.config.phalaAttestationVerifier,
               agentContract: this.config.phalaAgentContract,
             }
           : undefined,
-        requirePhala: !!input.requirePhala,
+        requirePhala: !!(input.requireTee || input.requirePhala),
         publishReport: !!input.publishReport,
       }
     );

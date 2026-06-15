@@ -28,9 +28,14 @@ export const portfolioDiagnoseSchema = z.object({
   riskInputSource: portfolioRiskInputSourceSchema.optional(),
   publishReport: z.boolean().default(false),
   requirePhala: z.boolean().default(false),
+  requireTee: z.boolean().default(false),
   phalaAttestationHash: z
     .string()
     .regex(/^0x[a-fA-F0-9]{64}$/, "phalaAttestationHash must be bytes32")
+    .optional(),
+  teeAttestationHash: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{64}$/, "teeAttestationHash must be bytes32")
     .optional(),
 });
 

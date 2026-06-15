@@ -11,6 +11,7 @@
     "agent:smoke": "tsx src/scripts/smokeElizaRuntime.ts",
     "agent:test": "tsx src/scripts/testElizaAgentRuntime.ts",
     "agent:reliability": "tsx src/scripts/smokeAgentOrchestrationReliability.ts",
+    "mantle:alignment": "tsx src/scripts/smokeMantleAlignment.ts",
     "risk:pipeline": "tsx src/scripts/runAggregateRiskPipeline.ts",
     "canonical:smoke": "tsx src/scripts/smokeCanonicalRobinhood.ts",
     "scan:robinhood-transfers": "tsx src/scripts/scanRobinhoodTransfers.ts",

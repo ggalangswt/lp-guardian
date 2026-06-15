@@ -5,6 +5,7 @@ import type {
   AgentType,
   AgentTopic,
 } from "@lp-guardian/core";
+import { externalAgentName } from "@lp-guardian/core";
 import { keccak256, toBytes, type Address, type Hex } from "viem";
 import type { ServerConfig } from "../config.js";
 import type { FoundationRunRequest } from "../schemas/agent.js";
@@ -26,6 +27,14 @@ import type {
   PortfolioRiskInput,
   PortfolioRiskResult,
 } from "./robinhood/riskEngine.js";
+import {
+  BeDataClient,
+  type BeDataResult,
+  type CorrelationResponse,
+  type OptimizeResponse,
+  type SimulateResponse,
+} from "./beDataClient.js";
+import { recordTuringDecision, recordTuringOutcome } from "../chain/turingRegistry.js";
 
 export type FoundationRunMode = "mock" | "eliza";
 
@@ -49,8 +58,15 @@ export interface AgentOrchestrationInput {
   dryRun?: boolean;
   userApproved?: boolean;
   publishReport?: boolean;
+  recordTuringDecision?: boolean;
+  recordTuringOutcome?: boolean;
+  turingDecisionId?: string;
+  simulatedPnlBps?: string;
+  simulatedScoreBps?: number;
   requirePhala?: boolean;
+  requireTee?: boolean;
   phalaAttestationHash?: Hex;
+  teeAttestationHash?: Hex;
 }
 
 export interface AgentOrchestrationResult {
@@ -103,10 +119,14 @@ interface AgentContext {
   scan?: WalletRiskInputResult;
   diagnosis?: AggregateRiskPipelineResult;
   optimization?: RebalanceProposalPreview;
+  beDataCorrelation?: BeDataResult<CorrelationResponse>;
+  beDataSimulation?: BeDataResult<SimulateResponse>;
+  beDataOptimization?: BeDataResult<OptimizeResponse>;
 }
 
 interface AgentMessageProvenance {
   agent: AgentType;
+  externalAgent: ReturnType<typeof externalAgentName>;
   tee: {
     label: "VERIFIED" | "EMULATED";
     provider: "phala" | "unavailable";
@@ -266,11 +286,13 @@ function messageProvenance(
 } {
   const payloadObject = isRecord(payload) ? payload : undefined;
   const attestationHash =
+    nonZeroHash(context.input.teeAttestationHash) ??
     nonZeroHash(context.input.phalaAttestationHash) ??
     nonZeroHash(payloadObject?.attestationHash);
   const verified = Boolean(attestationHash);
   const provenance: AgentMessageProvenance = {
     agent: agentType,
+    externalAgent: externalAgentName(agentType),
     tee: {
       label: verified ? "VERIFIED" : "EMULATED",
       provider: verified ? "phala" : "unavailable",
@@ -453,6 +475,31 @@ function normalizeForWire(value: unknown): unknown {
   );
 }
 
+interface TuringDecisionPreview {
+  requested: boolean;
+  status: "skipped" | "recorded" | "failed";
+  txHash?: Hex;
+  chainId?: number;
+  registry?: Address;
+  agentId?: string;
+  action?: 0 | 1 | 2 | 3;
+  scenarioHash?: Hex;
+  reportHash?: Hex;
+  error?: string;
+  provenance: {
+    label: "VERIFIED" | "UNAVAILABLE" | "EMULATED";
+    source: string;
+    degraded: boolean;
+    warnings: string[];
+    observedAt: number;
+  };
+}
+
+function scanPositionsForBeData(scan?: WalletRiskInputResult): unknown[] {
+  const positions = normalizeForWire(scan?.scan.positions ?? []);
+  return Array.isArray(positions) ? positions : [];
+}
+
 function stableStringify(value: unknown): string {
   return JSON.stringify(normalizeForWire(value), (_key, entry) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
@@ -470,6 +517,17 @@ function riskActionName(value: 0 | 1 | 2): "hold" | "rebalance" | "close" {
       return "rebalance";
     case 2:
       return "close";
+  }
+}
+
+function turingActionForRiskAction(value: 0 | 1 | 2): 0 | 2 | 3 {
+  switch (value) {
+    case 0:
+      return 0;
+    case 1:
+      return 2;
+    case 2:
+      return 3;
   }
 }
 
@@ -635,6 +693,7 @@ class ScanAgent extends PortfolioAgent {
     context.scan = scan;
 
     return {
+      externalAgent: externalAgentName(this.type),
       walletAddress: context.input.walletAddress,
       currentlyOwnedTokenIds: scan.scan.currentlyOwnedTokenIds.map((id) =>
         id.toString(),
@@ -648,7 +707,7 @@ class ScanAgent extends PortfolioAgent {
 }
 
 class CorrelateAgent extends PortfolioAgent {
-  constructor() {
+  constructor(private readonly beDataClient: BeDataClient) {
     super("correlate");
   }
 
@@ -657,22 +716,54 @@ class CorrelateAgent extends PortfolioAgent {
       throw new Error("CorrelateAgent requires ScanAgent output.");
     }
 
+    const beDataCorrelation = await this.beDataClient.computeCorrelation({
+      positions: scanPositionsForBeData(context.scan),
+      priceHistory: [],
+    });
+    context.beDataCorrelation = beDataCorrelation;
+
     return {
+      externalAgent: externalAgentName(this.type),
       method: "pair-exposure-bps",
       correlatedExposureBps: context.scan.riskInput.correlatedExposureBps,
       concentrationBps: context.scan.riskInput.concentrationBps,
+      beData: {
+        ok: beDataCorrelation.ok,
+        data: beDataCorrelation.data,
+        provenance: beDataCorrelation.provenance,
+      },
       note:
-        "Correlation is currently approximated from wallet pair exposure until price-history matrix computation is wired.",
+        beDataCorrelation.ok
+          ? "Correlation includes BE Data service output."
+          : "Correlation falls back to pair exposure because BE Data service output is unavailable.",
     };
   }
 }
 
+function confidenceForTuringDecision(
+  riskScoreBps: bigint,
+  beDataOk: boolean,
+): number {
+  const base = beDataOk ? 7_500 : 5_500;
+  const riskConfidence = Number(clampBigInt(riskScoreBps, 0n, 10_000n) / 20n);
+  return Math.min(9_500, base + riskConfidence);
+}
+
 class SimulateAgent extends PortfolioAgent {
-  constructor(private readonly portfolioService: PortfolioService) {
+  constructor(
+    private readonly portfolioService: PortfolioService,
+    private readonly beDataClient: BeDataClient,
+  ) {
     super("simulate");
   }
 
   async run(context: AgentContext): Promise<unknown> {
+    const beDataSimulation = await this.beDataClient.computeSimulate({
+      positions: scanPositionsForBeData(context.scan),
+      scenarios: [context.input.scenario ?? "baseline"],
+    });
+    context.beDataSimulation = beDataSimulation;
+
     const diagnosis = await this.portfolioService.diagnose({
       walletAddress: context.input.walletAddress,
       tokenId: context.input.tokenId,
@@ -687,24 +778,137 @@ class SimulateAgent extends PortfolioAgent {
           }
         : undefined,
       publishReport: context.input.publishReport,
-      requirePhala: context.input.requirePhala,
-      phalaAttestationHash: context.input.phalaAttestationHash,
+      requirePhala: context.input.requirePhala || context.input.requireTee,
+      phalaAttestationHash:
+        context.input.teeAttestationHash ?? context.input.phalaAttestationHash,
     });
     context.diagnosis = diagnosis;
 
     return {
+      externalAgent: externalAgentName(this.type),
       scenario: context.input.scenario ?? "baseline",
       riskOutput: diagnosis.report.payload.riskOutput,
       reportRoot: diagnosis.report.rootHash,
       attestationHash: diagnosis.attestationHash,
       anchor: diagnosis.anchor,
+      beData: {
+        ok: beDataSimulation.ok,
+        data: beDataSimulation.data,
+        provenance: beDataSimulation.provenance,
+      },
     };
   }
 }
 
 class OptimizeAgent extends PortfolioAgent {
-  constructor() {
+  constructor(
+    private readonly config: ServerConfig,
+    private readonly beDataClient: BeDataClient,
+  ) {
     super("optimize");
+  }
+
+  private async maybeRecordTuringDecision(
+    context: AgentContext,
+    proposal: RebalanceProposalPreview,
+  ): Promise<TuringDecisionPreview> {
+    const requested = Boolean(context.input.recordTuringDecision);
+    const riskOutput = context.diagnosis?.report.payload.riskOutput;
+    const reportHash = context.diagnosis?.report.rootHash;
+
+    if (!requested) {
+      return {
+        requested,
+        status: "skipped",
+        provenance: {
+          label: "EMULATED",
+          source: "Mantle Turing Registry",
+          degraded: false,
+          warnings: ["recordTuringDecision was not requested for this run."],
+          observedAt: Date.now(),
+        },
+      };
+    }
+
+    if (!this.config.turingAgentId || !riskOutput || !reportHash) {
+      return {
+        requested,
+        status: "skipped",
+        agentId: this.config.turingAgentId?.toString(),
+        reportHash,
+        provenance: {
+          label: "UNAVAILABLE",
+          source: "Mantle Turing Registry",
+          degraded: true,
+          warnings: [
+            "Turing decision was requested, but LPGUARDIAN_TURING_AGENT_ID or report output is unavailable.",
+          ],
+          observedAt: Date.now(),
+        },
+      };
+    }
+
+    const scenarioHash = keccak256(toBytes(stableStringify({
+      walletAddress: context.input.walletAddress,
+      scenario: context.input.scenario ?? "baseline",
+      proposalHash: proposal.proposalHash,
+    })));
+    const action = turingActionForRiskAction(riskOutput.recommendedAction);
+    const confidenceBps = confidenceForTuringDecision(
+      riskOutput.riskScoreBps,
+      Boolean(context.beDataOptimization?.ok),
+    );
+
+    try {
+      const result = await recordTuringDecision(this.config, {
+        agentId: this.config.turingAgentId,
+        subject: context.input.walletAddress,
+        scenarioHash,
+        reportHash,
+        action,
+        confidenceBps,
+        riskScoreBps: Number(clampBigInt(riskOutput.riskScoreBps, 0n, 10_000n)),
+        metadataURI: `lpguardian://proposal/${proposal.proposalHash}`,
+      });
+
+      return {
+        requested,
+        status: "recorded",
+        txHash: result.txHash,
+        chainId: result.chainId,
+        registry: result.registry,
+        agentId: this.config.turingAgentId.toString(),
+        action,
+        scenarioHash,
+        reportHash,
+        provenance: {
+          label: "VERIFIED",
+          source: "Mantle Turing Registry recordDecision",
+          degraded: false,
+          warnings: [],
+          observedAt: Date.now(),
+        },
+      };
+    } catch (error) {
+      return {
+        requested,
+        status: "failed",
+        agentId: this.config.turingAgentId.toString(),
+        action,
+        scenarioHash,
+        reportHash,
+        error: error instanceof Error ? error.message : String(error),
+        provenance: {
+          label: "UNAVAILABLE",
+          source: "Mantle Turing Registry recordDecision",
+          degraded: true,
+          warnings: [
+            error instanceof Error ? error.message : String(error),
+          ],
+          observedAt: Date.now(),
+        },
+      };
+    }
   }
 
   async run(context: AgentContext): Promise<unknown> {
@@ -719,8 +923,24 @@ class OptimizeAgent extends PortfolioAgent {
       context.scan?.riskInput,
     );
     context.optimization = proposal;
+    const beDataOptimization = await this.beDataClient.computeOptimize({
+      positions: scanPositionsForBeData(context.scan),
+      correlation: context.beDataCorrelation?.data ?? {
+        method: "pair-exposure-bps",
+        correlatedExposureBps: context.scan?.riskInput.correlatedExposureBps,
+        concentrationBps: context.scan?.riskInput.concentrationBps,
+      },
+      constraints: {
+        dryRun: context.input.dryRun ?? true,
+        userApproved: Boolean(context.input.userApproved),
+        proposalHash: proposal.proposalHash,
+      },
+    });
+    context.beDataOptimization = beDataOptimization;
+    const turingDecision = await this.maybeRecordTuringDecision(context, proposal);
 
     return {
+      externalAgent: externalAgentName(this.type),
       recommendedAction: riskActionName(riskOutput.recommendedAction),
       riskTierName: riskTierName(riskOutput.riskTier),
       riskScoreBps: riskOutput.riskScoreBps,
@@ -728,8 +948,16 @@ class OptimizeAgent extends PortfolioAgent {
       proposalStatus: "preview",
       rebalanceProposal: proposal,
       reportRoot: context.diagnosis.report.rootHash,
+      beData: {
+        ok: beDataOptimization.ok,
+        data: beDataOptimization.data,
+        provenance: beDataOptimization.provenance,
+      },
+      turingDecision,
       note:
-        "OptimizeAgent generated a deterministic approval-gated rebalance proposal preview. It is not a submitted transaction bundle.",
+        beDataOptimization.ok
+          ? "OptimizeAgent generated an approval-gated proposal with BE Data optimization output."
+          : "OptimizeAgent generated a deterministic approval-gated proposal preview because BE Data optimization is unavailable.",
     };
   }
 }
@@ -742,6 +970,7 @@ class ExecuteAgent extends PortfolioAgent {
   async run(context: AgentContext): Promise<unknown> {
     const proposal = context.optimization;
     return {
+      externalAgent: externalAgentName(this.type),
       status: context.input.userApproved ? "ready_for_execution_backend" : "waiting_for_user",
       dryRun: context.input.dryRun ?? true,
       userApproved: Boolean(context.input.userApproved),
@@ -758,18 +987,117 @@ class ExecuteAgent extends PortfolioAgent {
 }
 
 class MonitorAgent extends PortfolioAgent {
-  constructor(private readonly monitorService: MonitorService) {
+  constructor(
+    private readonly config: ServerConfig,
+    private readonly monitorService: MonitorService,
+  ) {
     super("monitor");
+  }
+
+  private async maybeRecordOutcome(
+    context: AgentContext,
+    state: unknown,
+  ): Promise<TuringDecisionPreview> {
+    const requested = Boolean(context.input.recordTuringOutcome);
+    if (!requested) {
+      return {
+        requested,
+        status: "skipped",
+        provenance: {
+          label: "EMULATED",
+          source: "Mantle Turing Registry",
+          degraded: false,
+          warnings: ["recordTuringOutcome was not requested for this run."],
+          observedAt: Date.now(),
+        },
+      };
+    }
+
+    if (!context.input.turingDecisionId) {
+      return {
+        requested,
+        status: "skipped",
+        provenance: {
+          label: "UNAVAILABLE",
+          source: "Mantle Turing Registry recordOutcome",
+          degraded: true,
+          warnings: [
+            "Turing outcome was requested, but turingDecisionId was not supplied.",
+          ],
+          observedAt: Date.now(),
+        },
+      };
+    }
+
+    const scoreBps = context.input.simulatedScoreBps ?? 5_000;
+    const pnlBps = BigInt(context.input.simulatedPnlBps ?? "0");
+    const outcomeHash = keccak256(toBytes(stableStringify({
+      walletAddress: context.input.walletAddress,
+      decisionId: context.input.turingDecisionId,
+      pnlBps: pnlBps.toString(),
+      scoreBps,
+      state,
+    })));
+
+    try {
+      const result = await recordTuringOutcome(this.config, {
+        decisionId: BigInt(context.input.turingDecisionId),
+        pnlBps,
+        scoreBps,
+        outcomeHash,
+        metadataURI: `lpguardian://outcome/${outcomeHash}`,
+      });
+
+      return {
+        requested,
+        status: "recorded",
+        txHash: result.txHash,
+        chainId: result.chainId,
+        registry: result.registry,
+        reportHash: outcomeHash,
+        provenance: {
+          label: "VERIFIED",
+          source: "Mantle Turing Registry recordOutcome",
+          degraded: false,
+          warnings: [],
+          observedAt: Date.now(),
+        },
+      };
+    } catch (error) {
+      return {
+        requested,
+        status: "failed",
+        reportHash: outcomeHash,
+        error: error instanceof Error ? error.message : String(error),
+        provenance: {
+          label: "UNAVAILABLE",
+          source: "Mantle Turing Registry recordOutcome",
+          degraded: true,
+          warnings: [
+            error instanceof Error ? error.message : String(error),
+          ],
+          observedAt: Date.now(),
+        },
+      };
+    }
   }
 
   async run(context: AgentContext): Promise<unknown> {
     const existing = this.monitorService.getWalletState(context.input.walletAddress);
-    return existing ?? this.monitorService.watch(context.input.walletAddress);
+    const state = existing ?? this.monitorService.watch(context.input.walletAddress);
+    const turingOutcome = await this.maybeRecordOutcome(context, state);
+
+    return {
+      externalAgent: externalAgentName(this.type),
+      ...state,
+      turingOutcome,
+    };
   }
 }
 
 export class AgentOrchestrator {
   private readonly portfolioService: PortfolioService;
+  private readonly beDataClient: BeDataClient;
   private readonly agents: Record<AgentType, PortfolioAgent>;
   private readonly runs = new Map<string, StoredAgentRun>();
   private readonly messagesByCorrelationId = new Map<string, AgentMessage[]>();
@@ -784,13 +1112,14 @@ export class AgentOrchestrator {
     private readonly queue: AgentRunQueue = new InMemoryAgentRunQueue(),
   ) {
     this.portfolioService = new PortfolioService(config);
+    this.beDataClient = new BeDataClient(config);
     this.agents = {
       scan: new ScanAgent(this.portfolioService),
-      correlate: new CorrelateAgent(),
-      simulate: new SimulateAgent(this.portfolioService),
-      optimize: new OptimizeAgent(),
+      correlate: new CorrelateAgent(this.beDataClient),
+      simulate: new SimulateAgent(this.portfolioService, this.beDataClient),
+      optimize: new OptimizeAgent(config, this.beDataClient),
       execute: new ExecuteAgent(),
-      monitor: new MonitorAgent(monitorService),
+      monitor: new MonitorAgent(config, monitorService),
     };
 
     for (const storedRun of this.stateStore.listRuns()) {

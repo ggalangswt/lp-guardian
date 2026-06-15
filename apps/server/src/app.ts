@@ -8,7 +8,9 @@ import { createAgentRuntime } from "./services/agentRuntime/index.js";
 import { createDiagnoseRoute } from "./routes/diagnose.js";
 import { createAgentOrchestrationRoute } from "./routes/agent/orchestration.js";
 import { createAgentRuntimeRoute } from "./routes/agent/runtime.js";
+import { createAgentSkillsRoute } from "./routes/agent/skills.js";
 import { createHealthRoute } from "./routes/health.js";
+import { createDiscoveryRoute } from "./routes/discovery.js";
 import { createAgentMonitorRoute } from "./routes/agent/monitor.js";
 import { createAgentFoundationRunRoute } from "./routes/agent/run.js";
 import { createPositionsRoute } from "./routes/positions.js";
@@ -62,7 +64,9 @@ export function createApp(config: ServerConfig, services: AppServices = {}): Hon
   app.use("*", requestLogger());
 
   app.route("/health", createHealthRoute(config));
+  app.route("/.well-known", createDiscoveryRoute(config));
   app.route("/agent/runtime", createAgentRuntimeRoute(config));
+  app.route("/agent/skills", createAgentSkillsRoute());
   app.route("/agent/monitor", createAgentMonitorRoute(monitorService));
   app.route("/agent/orchestration", createAgentOrchestrationRoute(agentOrchestrator));
   app.route("/agent/foundation/run", createAgentFoundationRunRoute(agentRuntime));
