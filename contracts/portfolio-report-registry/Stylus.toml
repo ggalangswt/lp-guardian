@@ -1,0 +1,6 @@
+[workspace]
+
+[workspace.networks]
+robinhood-testnet = { endpoint = "https://rpc.testnet.chain.robinhood.com", chain_id = 46630 }
+
+[contract]
