@@ -41,6 +41,7 @@ export interface ServerConfig {
   walletBackendPrivateKey?: string;
 
   // --- Data sources ---
+  beDataServiceUrl: string | null;
   theGraphKey: string | null;
   uniswapV3SubgraphId: string | null;
   uniswapV4SubgraphId: string | null;
@@ -56,6 +57,8 @@ export interface ServerConfig {
   riskEngineAddress: `0x${string}`;
   swapReplayVerifierAddress: `0x${string}`;
   turingRegistryAddress: `0x${string}`;
+  permit2BundlerAddress?: `0x${string}`;
+  teeAnchorAddress?: `0x${string}`;
   /** Same addresses under the names used by the robinhood/* services. */
   lpGuardianReportsContract?: string;
   lpGuardianRiskEngineContract?: string;
@@ -129,6 +132,12 @@ function address(value: string | undefined, fallback: string): `0x${string}` {
   return raw as `0x${string}`;
 }
 
+function optionalAddress(value: string | undefined): `0x${string}` | undefined {
+  const raw = nonEmpty(value);
+  if (!raw) return undefined;
+  return /^0x[0-9a-fA-F]{40}$/.test(raw) ? (raw as `0x${string}`) : undefined;
+}
+
 function strategistProvider(
   value: string | undefined,
 ): ServerConfig["strategistProvider"] {
@@ -138,7 +147,7 @@ function strategistProvider(
 }
 
 function chainMode(value: string | undefined): ChainMode {
-  return value === "mantle" ? "mantle" : "robinhood";
+  return value === "robinhood" ? "robinhood" : "mantle";
 }
 
 function list(value: string | undefined, fallback: string[]): string[] {
@@ -226,6 +235,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     anchorSignerPk,
     walletBackendPrivateKey: anchorSignerPk ?? undefined,
 
+    beDataServiceUrl: nonEmpty(env.BE_DATA_SERVICE_URL),
     theGraphKey: nonEmpty(env.THE_GRAPH_KEY),
     uniswapV3SubgraphId: nonEmpty(env.UNISWAP_V3_SUBGRAPH_ID),
     uniswapV4SubgraphId: nonEmpty(env.UNISWAP_V4_SUBGRAPH_ID),
@@ -238,6 +248,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     riskEngineAddress: riskEngine,
     swapReplayVerifierAddress: swapReplayVerifier,
     turingRegistryAddress: turingRegistry,
+    permit2BundlerAddress: optionalAddress(env.LPGUARDIAN_PERMIT2_BUNDLER),
+    teeAnchorAddress: optionalAddress(env.LPGUARDIAN_TEE_ANCHOR),
     lpGuardianReportsContract: reportRegistry,
     lpGuardianRiskEngineContract: riskEngine,
 

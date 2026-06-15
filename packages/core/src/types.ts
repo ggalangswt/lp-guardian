@@ -1,6 +1,15 @@
 // Shared types between server, web, agent, and mcp-server.
 
-export type ChainId = 1 | 11155111 | 8453 | 42161 | 10 | 137 | 46630;
+export type ChainId =
+  | 1
+  | 11155111
+  | 8453
+  | 42161
+  | 10
+  | 137
+  | 5000
+  | 5003
+  | 46630;
 
 export interface Token {
   address: string;

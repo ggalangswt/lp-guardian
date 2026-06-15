@@ -28,7 +28,8 @@ yarn-error.log*
 .lp-guardian/
 
 # Local planning and private docs
-docs/
+docs/*
+!docs/be-agent-interface-freeze.md
 
 # System
 .DS_Store

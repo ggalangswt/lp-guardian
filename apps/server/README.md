@@ -4,12 +4,14 @@ Hono backend for LP Guardian's BE Agent workstream.
 
 ## Current Priority
 
-The active BE Agent scope follows
-`../../docs/portfolio_lp_guardian_technical_docs.md`: portfolio-level diagnosis
-with the canonical six-agent direction
-`SCAN -> CORRELATE -> SIMULATE -> OPTIMIZE -> EXECUTE -> MONITOR`.
-See `../../docs/be-agent-priority.md` for the repo execution plan aligned to
-that brief.
+The active BE Agent scope follows the Mantle interface freeze in
+`../../docs/be-agent-interface-freeze.md`. The repo keeps its current API style
+(`/api/*`) while shifting the default chain context to Mantle.
+
+External agent names are frozen as `Scout`, `Strategist`, `Executor`, and
+`Sentinel`. The implementation may continue to use the existing internal
+pipeline names (`scan`, `correlate`, `simulate`, `optimize`, `execute`,
+`monitor`) where that keeps the code stable.
 
 ## Current Runtime
 
@@ -112,9 +114,15 @@ Current boundary:
   falls back to deterministic local advice and marks `modelBacked: false`.
 - Phala-verified strategist output is the next attested integration step.
 
-## Phala Plan
+## TEE Boundary
 
-`PhalaStrategistAdapter` is a placeholder until these are finalized:
+The Mantle interface freeze treats AWS Nitro attestation as a BE Data boundary.
+BE Agent will consume `/tee/sign` output when `BE_DATA_SERVICE_URL` is wired.
+Until then, strategist output without a verified TEE attestation must be labeled
+`EMULATED` or degraded.
+
+`PhalaStrategistAdapter` remains as a legacy placeholder until these are
+finalized or retired:
 
 - agent contract address
 - signer policy
