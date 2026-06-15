@@ -1,0 +1,13 @@
+{
+  "name": "lp-guardian-tee-attestor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TEE-attested verdict service for LP Guardian — runs inside a Phala/dstack CVM and returns a deterministic verdict bound to a TDX remote-attestation quote.",
+  "scripts": {
+    "start": "node src/index.mjs"
+  },
+  "dependencies": {
+    "js-sha3": "^0.9.3"
+  }
+}

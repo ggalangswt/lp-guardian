@@ -1,0 +1,19 @@
+# Phala Cloud deployment manifest for the LP Guardian TEE attestor.
+# Deploy on a CPU (Intel TDX) CVM — NOT a GPU instance — so it's covered by the
+# free $20 CVM credits. Image is public on Docker Hub (linux/amd64). Set the
+# AUTH_TOKEN as an encrypted secret in the Phala Cloud deploy form.
+
+services:
+  tee-attestor:
+    image: scientivan/lp-guardian-tee-attestor:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      # dstack guest-agent socket — gives the container TDX attestation.
+      - /var/run/dstack.sock:/var/run/dstack.sock
+    environment:
+      - PORT=3000
+      # Shared secret the main backend sends as `Authorization: Bearer <token>`.
+      # Set this as an encrypted secret/env in the Phala Cloud deploy form.
+      - AUTH_TOKEN=${AUTH_TOKEN}
+    restart: always
