@@ -1,0 +1,21 @@
+{
+  "name": "lp-guardian",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @lp-guardian/web dev",
+    "build": "pnpm --filter @lp-guardian/web build",
+    "dev:web": "pnpm --filter @lp-guardian/web dev",
+    "dev:server": "pnpm --filter @lp-guardian/server dev",
+    "dev:mcp": "pnpm --filter @lp-guardian/mcp-server dev",
+    "build:server": "pnpm --filter @lp-guardian/server build",
+    "build:mcp": "pnpm --filter @lp-guardian/mcp-server build",
+    "typecheck:server": "pnpm --filter @lp-guardian/server typecheck",
+    "typecheck:mcp": "pnpm --filter @lp-guardian/mcp-server typecheck"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@10.33.2"
+}
