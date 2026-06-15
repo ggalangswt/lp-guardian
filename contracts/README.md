@@ -47,6 +47,12 @@ Current Mantle Sepolia deployment:
 | --- | --- | --- |
 | `LPGuardianTuringRegistry` | `0x3338C6C85399e9E9d28233a186643a5383C6c736` | `0x929474928d21c3fc69ab2a565e4894213edf72befe3bebac3f828e9dc8c6f47e` |
 
+Current Mantle mainnet deployment:
+
+| Contract | Address | Deploy Tx |
+| --- | --- | --- |
+| `LPGuardianTuringRegistry` | `0x3338C6C85399e9E9d28233a186643a5383C6c736` | `0x7a776f2c43f9460f2c95ffb7f82dcc0007df106c327b819cfd2629416d08f434` |
+
 Mainnet values:
 
 ```env

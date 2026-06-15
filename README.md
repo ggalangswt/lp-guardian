@@ -73,27 +73,26 @@ Deployment metadata lives in `contracts/deployments/robinhood-testnet.json`.
 
 The Mantle Turing path is implemented in `contracts/evm` as `LPGuardianTuringRegistry`. It follows the ERC-8004 draft direction with an ERC-721-style agent identity, agent URI, and metadata, then adds LP Guardian-specific decision and outcome records for on-chain AI benchmarking.
 
-Default testnet configuration:
+Default mainnet configuration:
 
 ```env
 LPGUARDIAN_CHAIN_MODE=mantle
-MANTLE_RPC=https://rpc.sepolia.mantle.xyz
-MANTLE_CHAIN_ID=5003
+MANTLE_RPC=https://rpc.mantle.xyz
+MANTLE_CHAIN_ID=5000
 MANTLE_TURING_REGISTRY=0x3338C6C85399e9E9d28233a186643a5383C6c736
 ```
+
+Mantle mainnet deployment:
+
+| Contract | Address | Deploy Tx |
+| --- | --- | --- |
+| `LPGuardianTuringRegistry` | `0x3338C6C85399e9E9d28233a186643a5383C6c736` | `0x7a776f2c43f9460f2c95ffb7f82dcc0007df106c327b819cfd2629416d08f434` |
 
 Mantle Sepolia deployment:
 
 | Contract | Address | Deploy Tx |
 | --- | --- | --- |
 | `LPGuardianTuringRegistry` | `0x3338C6C85399e9E9d28233a186643a5383C6c736` | `0x929474928d21c3fc69ab2a565e4894213edf72befe3bebac3f828e9dc8c6f47e` |
-
-Mainnet configuration:
-
-```env
-MANTLE_RPC=https://rpc.mantle.xyz
-MANTLE_CHAIN_ID=5000
-```
 
 ## Quick Start
 
@@ -144,9 +143,9 @@ ROBINHOOD_NFPM_ADDRESS=0x...
 ROBINHOOD_V3_FACTORY_ADDRESS=0x...
 ROBINHOOD_SCAN_FROM_BLOCK=0
 
-LPGUARDIAN_CHAIN_MODE=robinhood
-MANTLE_RPC=https://rpc.sepolia.mantle.xyz
-MANTLE_CHAIN_ID=5003
+LPGUARDIAN_CHAIN_MODE=mantle
+MANTLE_RPC=https://rpc.mantle.xyz
+MANTLE_CHAIN_ID=5000
 MANTLE_TURING_REGISTRY=
 
 LPGUARDIAN_REPORTS_CONTRACT=0x9803be5349eedf7c28ac1914b743757ce043b7cc
