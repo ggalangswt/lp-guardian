@@ -22,10 +22,20 @@ const orchestrationRunSchema = z.object({
   dryRun: z.boolean().default(true),
   userApproved: z.boolean().default(false),
   publishReport: z.boolean().default(false),
+  recordTuringDecision: z.boolean().default(false),
+  recordTuringOutcome: z.boolean().default(false),
+  turingDecisionId: z.string().regex(/^\d+$/).optional(),
+  simulatedPnlBps: z.string().regex(/^-?\d+$/).optional(),
+  simulatedScoreBps: z.number().int().min(0).max(10_000).optional(),
   requirePhala: z.boolean().default(false),
+  requireTee: z.boolean().default(false),
   phalaAttestationHash: z
     .string()
     .regex(/^0x[a-fA-F0-9]{64}$/, "phalaAttestationHash must be bytes32")
+    .optional(),
+  teeAttestationHash: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{64}$/, "teeAttestationHash must be bytes32")
     .optional(),
 });
 
@@ -34,6 +44,7 @@ function toInput(value: z.infer<typeof orchestrationRunSchema>): AgentOrchestrat
     ...value,
     walletAddress: value.walletAddress as Address,
     phalaAttestationHash: value.phalaAttestationHash as Hex | undefined,
+    teeAttestationHash: value.teeAttestationHash as Hex | undefined,
   };
 }
 

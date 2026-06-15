@@ -5,6 +5,12 @@ export interface RuntimeStatus {
   strategistProvider: ServerConfig["strategistProvider"];
   elizaReady: boolean;
   phalaReady: boolean;
+  mantleReady: boolean;
+  turingAgentReady: boolean;
+  beDataReady: boolean;
+  merchantMoeReady: boolean;
+  executionReady: boolean;
+  teeAnchorReady: boolean;
   robinhoodReady: boolean;
   reportAnchoringReady: boolean;
   noMockDemoReady: boolean;
@@ -35,6 +41,16 @@ export function getRuntimeStatus(config: ServerConfig): RuntimeStatus {
       config.phalaAttestationVerifier &&
       (config.phalaApiUrl || config.robinhoodRpcUrl),
   );
+  const mantleReady = Boolean(
+    config.mantleRpcUrl &&
+      config.mantleChainId &&
+      config.turingRegistryAddress !== "0x0000000000000000000000000000000000000000",
+  );
+  const beDataReady = Boolean(config.beDataServiceUrl);
+  const merchantMoeReady = Boolean(config.merchantMoeSubgraphUrl);
+  const turingAgentReady = Boolean(config.turingAgentId);
+  const executionReady = Boolean(config.permit2BundlerAddress);
+  const teeAnchorReady = Boolean(config.teeAnchorAddress);
   const noMockDemoReady = robinhoodReady && phalaReady;
 
   return {
@@ -42,6 +58,12 @@ export function getRuntimeStatus(config: ServerConfig): RuntimeStatus {
     strategistProvider: config.strategistProvider,
     elizaReady,
     phalaReady,
+    mantleReady,
+    turingAgentReady,
+    beDataReady,
+    merchantMoeReady,
+    executionReady,
+    teeAnchorReady,
     robinhoodReady,
     reportAnchoringReady,
     noMockDemoReady,
@@ -63,6 +85,24 @@ export function getRuntimeStatus(config: ServerConfig): RuntimeStatus {
       phalaReady
         ? "Phala config is present; adapter implementation still needs provider-specific verification calls."
         : "Phala needs agent contract, attestation verifier, and provider/RPC access.",
+      mantleReady
+        ? "Mantle Turing registry config is present."
+        : "Mantle Turing registry needs MANTLE_RPC, MANTLE_CHAIN_ID, and MANTLE_TURING_REGISTRY.",
+      turingAgentReady
+        ? `Default Mantle Turing agent id is configured: ${config.turingAgentId?.toString()}.`
+        : "Set LPGUARDIAN_TURING_AGENT_ID after registering the agent to enable automatic recordDecision writes.",
+      beDataReady
+        ? "BE Data service URL is configured; Strategist will attempt correlation, simulation, optimization, and TEE calls through that boundary."
+        : "BE Data service URL is not configured; Strategist will use degraded local fallbacks.",
+      merchantMoeReady
+        ? "Merchant Moe subgraph URL is configured for Mantle Scout."
+        : "Merchant Moe subgraph URL is not configured; Mantle Scout returns an explicit degraded empty scan.",
+      executionReady
+        ? "Permit2Bundler address is configured; transaction submission still requires the execution backend."
+        : "Permit2Bundler address is not configured; Executor remains preview/disabled only.",
+      teeAnchorReady
+        ? "TEEAnchor address is configured."
+        : "TEEAnchor address is not configured; TEE anchoring remains unavailable.",
     ],
   };
 }

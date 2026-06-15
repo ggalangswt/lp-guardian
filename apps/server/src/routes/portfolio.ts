@@ -97,8 +97,10 @@ export function createPortfolioRoute(config: ServerConfig): Hono {
           toJsonSafe({
             address: parsed.data,
             version: 1,
-            source: "onchain",
-            chainId: config.robinhoodChainId,
+            source: config.chainMode === "mantle" ? "merchant-moe" : "onchain",
+            chainId: config.chainMode === "mantle"
+              ? config.mantleChainId
+              : config.robinhoodChainId,
             nfpmAddress: walletRisk.scan.nfpmAddress,
             scan: {
               fromBlock: walletRisk.scan.fromBlock,
@@ -142,6 +144,7 @@ export function createPortfolioRoute(config: ServerConfig): Hono {
         walletAddress: parsed.data.walletAddress as Address,
         riskInput: parsed.data.riskInput ? toBigIntRiskInput(parsed.data.riskInput) : undefined,
         phalaAttestationHash: parsed.data.phalaAttestationHash as `0x${string}` | undefined,
+        teeAttestationHash: parsed.data.teeAttestationHash as `0x${string}` | undefined,
       });
 
       return c.json(ok(toJsonSafe(result)));
@@ -155,6 +158,65 @@ export function createPortfolioRoute(config: ServerConfig): Hono {
       }
       return c.json(fail("INTERNAL_ERROR", message), 500);
     }
+  });
+
+  route.post("/execute", async (c) => {
+    const body = await c.req.json().catch(() => undefined);
+    const schema = z.object({
+      walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+      proposalHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+      permit2Signature: z.string().regex(/^0x[a-fA-F0-9]+$/).optional(),
+      dryRun: z.boolean().default(true),
+      userApproved: z.boolean().default(false),
+    });
+    const parsed = schema.safeParse(body);
+
+    if (!parsed.success) {
+      return c.json(
+        fail("BAD_REQUEST", "Invalid portfolio execute payload", parsed.error.issues),
+        400,
+      );
+    }
+
+    const dryRun = parsed.data.dryRun;
+    const userApproved = parsed.data.userApproved;
+    const canSubmit =
+      !dryRun &&
+      userApproved &&
+      Boolean(parsed.data.permit2Signature) &&
+      Boolean(config.permit2BundlerAddress);
+    const status = dryRun
+      ? "preview"
+      : userApproved
+        ? "disabled"
+        : "waiting_for_user";
+
+    return c.json(
+      ok({
+        status,
+        walletAddress: parsed.data.walletAddress,
+        proposalHash: parsed.data.proposalHash,
+        dryRun,
+        userApproved,
+        chainId: config.mantleChainId,
+        contract: config.permit2BundlerAddress,
+        txHash: undefined,
+        provenance: [
+          {
+            label: canSubmit ? "UNAVAILABLE" : "EMULATED",
+            source: "Executor",
+            degraded: true,
+            warnings: [
+              canSubmit
+                ? "Permit2Bundler is configured, but transaction submission is intentionally disabled until the execution backend is implemented."
+                : "Execution endpoint is frozen as an approval-gated interface; no transaction was submitted.",
+            ],
+            observedAt: Date.now(),
+          },
+        ],
+      }),
+      dryRun || !userApproved ? 200 : 409,
+    );
   });
 
   route.post("/validate-ownership", async (c) => {

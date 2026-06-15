@@ -9,6 +9,25 @@ export type AgentType =
   | "execute"
   | "monitor";
 
+export type ExternalAgentName =
+  | "Scout"
+  | "Strategist"
+  | "Executor"
+  | "Sentinel";
+
+export const externalAgentNames: Record<AgentType, ExternalAgentName> = {
+  scan: "Scout",
+  correlate: "Strategist",
+  simulate: "Strategist",
+  optimize: "Strategist",
+  execute: "Executor",
+  monitor: "Sentinel",
+};
+
+export function externalAgentName(agent: AgentType): ExternalAgentName {
+  return externalAgentNames[agent];
+}
+
 export type AgentRunStatus =
   | "queued"
   | "running"

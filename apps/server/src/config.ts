@@ -42,6 +42,7 @@ export interface ServerConfig {
 
   // --- Data sources ---
   beDataServiceUrl: string | null;
+  merchantMoeSubgraphUrl: string | null;
   theGraphKey: string | null;
   uniswapV3SubgraphId: string | null;
   uniswapV4SubgraphId: string | null;
@@ -57,6 +58,7 @@ export interface ServerConfig {
   riskEngineAddress: `0x${string}`;
   swapReplayVerifierAddress: `0x${string}`;
   turingRegistryAddress: `0x${string}`;
+  turingAgentId?: bigint;
   permit2BundlerAddress?: `0x${string}`;
   teeAnchorAddress?: `0x${string}`;
   /** Same addresses under the names used by the robinhood/* services. */
@@ -136,6 +138,12 @@ function optionalAddress(value: string | undefined): `0x${string}` | undefined {
   const raw = nonEmpty(value);
   if (!raw) return undefined;
   return /^0x[0-9a-fA-F]{40}$/.test(raw) ? (raw as `0x${string}`) : undefined;
+}
+
+function optionalBigint(value: string | undefined): bigint | undefined {
+  const raw = nonEmpty(value);
+  if (!raw || !/^\d+$/.test(raw)) return undefined;
+  return BigInt(raw);
 }
 
 function strategistProvider(
@@ -236,6 +244,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     walletBackendPrivateKey: anchorSignerPk ?? undefined,
 
     beDataServiceUrl: nonEmpty(env.BE_DATA_SERVICE_URL),
+    merchantMoeSubgraphUrl: nonEmpty(env.MERCHANT_MOE_SUBGRAPH_URL),
     theGraphKey: nonEmpty(env.THE_GRAPH_KEY),
     uniswapV3SubgraphId: nonEmpty(env.UNISWAP_V3_SUBGRAPH_ID),
     uniswapV4SubgraphId: nonEmpty(env.UNISWAP_V4_SUBGRAPH_ID),
@@ -248,6 +257,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     riskEngineAddress: riskEngine,
     swapReplayVerifierAddress: swapReplayVerifier,
     turingRegistryAddress: turingRegistry,
+    turingAgentId: optionalBigint(env.LPGUARDIAN_TURING_AGENT_ID),
     permit2BundlerAddress: optionalAddress(env.LPGUARDIAN_PERMIT2_BUNDLER),
     teeAnchorAddress: optionalAddress(env.LPGUARDIAN_TEE_ANCHOR),
     lpGuardianReportsContract: reportRegistry,

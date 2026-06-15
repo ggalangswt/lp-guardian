@@ -66,8 +66,18 @@ const portfolioDiagnosisProperties = {
   riskInput: riskInputSchema,
   riskInputSource: riskInputSourceSchema,
   publishReport: { type: "boolean", default: false },
+  recordTuringDecision: { type: "boolean", default: false },
+  recordTuringOutcome: { type: "boolean", default: false },
+  turingDecisionId: { type: "string", pattern: "^\\d+$" },
+  simulatedPnlBps: { type: "string", pattern: "^-?\\d+$" },
+  simulatedScoreBps: { type: "number", minimum: 0, maximum: 10000 },
   requirePhala: { type: "boolean", default: false },
+  requireTee: { type: "boolean", default: false },
   phalaAttestationHash: {
+    type: "string",
+    pattern: "^0x[a-fA-F0-9]{64}$",
+  },
+  teeAttestationHash: {
     type: "string",
     pattern: "^0x[a-fA-F0-9]{64}$",
   },
@@ -256,8 +266,15 @@ function portfolioDiagnosisBody(args: JsonObject): JsonObject {
     riskInput: args.riskInput,
     riskInputSource: args.riskInputSource,
     publishReport: optionalBoolean(args, "publishReport", false),
+    recordTuringDecision: optionalBoolean(args, "recordTuringDecision", false),
+    recordTuringOutcome: optionalBoolean(args, "recordTuringOutcome", false),
+    turingDecisionId: optionalString(args, "turingDecisionId"),
+    simulatedPnlBps: optionalString(args, "simulatedPnlBps"),
+    simulatedScoreBps: args.simulatedScoreBps,
     requirePhala: optionalBoolean(args, "requirePhala", false),
+    requireTee: optionalBoolean(args, "requireTee", false),
     phalaAttestationHash: optionalString(args, "phalaAttestationHash"),
+    teeAttestationHash: optionalString(args, "teeAttestationHash"),
   };
 }
 
