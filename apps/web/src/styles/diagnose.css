@@ -1,0 +1,855 @@
+/* LP Guardian — Diagnose Page — Open House London product register */
+/* Scope: .diagnose-theme */
+
+.diagnose-theme {
+  /* ── Palette (mirrors Landing / Atlas) ──────────────────────── */
+  --lp-base-deep:    oklch(0.21 0.11 267);
+  --lp-base-royal:   oklch(0.38 0.18 260);
+  --lp-base-card:    oklch(0.28 0.10 263);
+  --lp-paper:        oklch(0.97 0.01 250);
+
+  --lp-ink-hard:     oklch(0.12 0.02 260);
+  --lp-ink:          oklch(0.97 0.01 250);
+  --lp-ink-soft:     oklch(0.82 0.05 255);
+  --lp-ink-faint:    oklch(0.64 0.07 258);
+  --lp-ink-ghost:    oklch(0.46 0.07 260);
+
+  --lp-lime:         oklch(0.92 0.22 130);
+  --lp-lime-deep:    oklch(0.78 0.21 130);
+
+  --lp-char-cyan:    oklch(0.68 0.18 230);
+  --lp-char-hi:      oklch(0.82 0.14 220);
+
+  --lp-accent-pink:  oklch(0.72 0.20 15);
+  --lp-bleed:        oklch(0.72 0.22 24);
+  --lp-healthy:      oklch(0.80 0.18 145);
+  --lp-toxic:        oklch(0.86 0.18 88);
+
+  --lp-border:       oklch(0.12 0.02 260);
+  --lp-border-soft:  oklch(0.65 0.07 258 / 0.14);
+  --lp-border-mid:   oklch(0.65 0.07 258 / 0.28);
+
+  --lp-shadow:       5px 5px 0 oklch(0.12 0.02 260);
+  --lp-shadow-sm:    3px 3px 0 oklch(0.12 0.02 260);
+  --lp-shadow-hover: 2px 2px 0 oklch(0.12 0.02 260);
+
+  /* ── Font override: Bagel Fat One for display ────────────────── */
+  --font-display: 'Bagel Fat One', system-ui, sans-serif;
+
+  /* ── Global token overrides (AppHeader + atom components) ────── */
+  --text:           oklch(0.97 0.01 250);
+  --text-secondary: oklch(0.82 0.05 255);
+  --text-tertiary:  oklch(0.64 0.07 258);
+  --text-faint:     oklch(0.46 0.07 260);
+  --surface:        oklch(0.30 0.12 263);
+  --surface-raised: oklch(0.34 0.11 260);
+  --border:         oklch(0.65 0.08 258 / 0.22);
+  --border-strong:  oklch(0.65 0.08 258 / 0.36);
+  --healthy:        var(--lp-healthy);
+
+  min-height:          100vh;
+  background:          linear-gradient(to bottom, var(--lp-base-deep) 0%, var(--lp-base-royal) 100%);
+  background-attachment: fixed;
+  color:               var(--lp-ink);
+  position:            relative;
+  overflow-x:          hidden;
+}
+
+/* ── Shell ─────────────────────────────────────────────────────── */
+
+.diagnose-shell {
+  width:   min(1360px, calc(100% - 64px));
+  margin:  0 auto;
+  padding: 40px 0 120px;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────── */
+
+.diagnose-hero {
+  display:               grid;
+  grid-template-columns: 1fr minmax(0, 380px);
+  gap:                   56px;
+  align-items:           center;
+  padding:               48px 0 56px;
+  border-bottom:         2px solid var(--lp-border-mid);
+}
+
+.diagnose-hero-content {
+  min-width: 0;
+}
+
+.diagnose-kicker {
+  display:        inline-flex;
+  align-items:    center;
+  padding:        6px 16px;
+  background:     var(--lp-lime);
+  color:          var(--lp-ink-hard);
+  border:         2px solid var(--lp-ink-hard);
+  border-radius:  9999px;
+  box-shadow:     3px 3px 0 var(--lp-ink-hard);
+  font-family:    var(--font-display);
+  font-size:      12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom:  20px;
+}
+
+.diagnose-h1 {
+  margin:          0 0 20px;
+  font-family:     var(--font-display);
+  font-size:       clamp(3rem, 5.5vw, 5rem);
+  line-height:     0.9;
+  letter-spacing:  -0.02em;
+  text-transform:  uppercase;
+  color:           var(--lp-lime);
+}
+
+.diagnose-token-chip {
+  display:        inline-flex;
+  padding:        6px 16px;
+  background:     var(--lp-ink-hard);
+  color:          var(--lp-lime);
+  border:         2px solid var(--lp-ink-hard);
+  border-radius:  9999px;
+  font-family:    var(--font-mono);
+  font-size:      12px;
+  letter-spacing: 0.02em;
+  box-shadow:     3px 3px 0 var(--lp-lime);
+  margin-bottom:  20px;
+}
+
+.diagnose-meta {
+  display:     flex;
+  flex-wrap:   wrap;
+  gap:         10px;
+  font-family: var(--font-mono);
+  font-size:   13px;
+  color:       var(--lp-ink-soft);
+}
+
+.diagnose-meta-key {
+  color: var(--lp-ink-faint);
+}
+
+/* Hero right column */
+
+.diagnose-hero-right {
+  display:        flex;
+  flex-direction: column;
+  align-items:    flex-start;
+  gap:            18px;
+  min-width:      0;
+}
+
+.diagnose-mascot {
+  width:       160px;
+  height:      auto;
+  flex-shrink: 0;
+}
+
+.diagnose-bubble {
+  width:     100%;
+  max-width: 340px;
+  font-size: 14px;
+}
+
+/* Scoreboard */
+
+.diagnose-scoreboard {
+  display:               grid;
+  grid-template-columns: repeat(3, 1fr);
+  width:                 100%;
+  border:                3px solid var(--lp-ink-hard);
+  border-radius:         18px;
+  box-shadow:            5px 5px 0 var(--lp-ink-hard);
+  overflow:              hidden;
+  background:            oklch(0.24 0.10 265);
+}
+
+.diagnose-score {
+  padding:      18px 14px;
+  border-right: 2px solid var(--lp-border-mid);
+  text-align:   center;
+}
+
+.diagnose-score:last-child {
+  border-right: none;
+}
+
+.diagnose-score strong {
+  display:        block;
+  font-family:    var(--font-display);
+  font-size:      30px;
+  line-height:    1;
+  color:          var(--lp-lime);
+  text-transform: uppercase;
+}
+
+.diagnose-score span {
+  display:        block;
+  font-family:    var(--font-mono);
+  font-size:      10px;
+  color:          var(--lp-ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top:     4px;
+}
+
+/* ── Phase timeline ────────────────────────────────────────────── */
+
+.diagnose-timeline {
+  padding:       36px 0 40px;
+  border-bottom: 2px solid var(--lp-border-mid);
+}
+
+.diagnose-section-label {
+  margin:         0 0 14px;
+  font-family:    var(--font-display);
+  font-size:      12px;
+  font-weight:    400;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color:          var(--lp-ink-faint);
+}
+
+.diagnose-phase-list {
+  display:        flex;
+  flex-direction: column;
+  gap:            8px;
+}
+
+.diagnose-phase-pill {
+  display:        grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items:    center;
+  gap:            16px;
+  padding:        11px 20px;
+  border:         3px solid var(--lp-ink-hard);
+  border-radius:  14px;
+  box-shadow:     4px 4px 0 var(--lp-ink-hard);
+  background:     oklch(0.24 0.10 265);
+  transition:     box-shadow 80ms linear, transform 80ms linear;
+}
+
+.diagnose-phase-pill--active {
+  background: var(--lp-lime);
+  animation:  diagnose-pill-pulse 1.6s ease-in-out infinite;
+}
+
+.diagnose-phase-pill--complete {
+  background: oklch(0.97 0.01 250);
+  opacity:    1;
+}
+
+.diagnose-phase-pill--failed {
+  background: var(--lp-accent-pink);
+}
+
+.diagnose-phase-pill--pending {
+  opacity: 0.65;
+}
+
+.diagnose-pill-num {
+  font-family: var(--font-display);
+  font-size:   22px;
+  line-height: 1;
+  text-align:  center;
+  color:       var(--lp-lime);
+}
+
+.diagnose-phase-pill--active   .diagnose-pill-num,
+.diagnose-phase-pill--complete .diagnose-pill-num,
+.diagnose-phase-pill--failed   .diagnose-pill-num {
+  color: var(--lp-ink-hard);
+}
+
+.diagnose-phase-pill--pending .diagnose-pill-num {
+  color: var(--lp-ink-faint);
+}
+
+.diagnose-pill-label {
+  font-family:    var(--font-display);
+  font-size:      15px;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color:          var(--lp-ink);
+  overflow:       hidden;
+  text-overflow:  ellipsis;
+  white-space:    nowrap;
+}
+
+.diagnose-phase-pill--active   .diagnose-pill-label,
+.diagnose-phase-pill--complete .diagnose-pill-label,
+.diagnose-phase-pill--failed   .diagnose-pill-label {
+  color: var(--lp-ink-hard);
+}
+
+.diagnose-phase-pill--pending .diagnose-pill-label {
+  color: var(--lp-ink-soft);
+}
+
+.diagnose-pill-status {
+  font-family:    var(--font-mono);
+  font-size:      11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color:          var(--lp-ink-faint);
+}
+
+.diagnose-phase-pill--active   .diagnose-pill-status,
+.diagnose-phase-pill--complete .diagnose-pill-status,
+.diagnose-phase-pill--failed   .diagnose-pill-status {
+  color: var(--lp-ink-hard);
+}
+
+.diagnose-phase-pill--complete .diagnose-pill-status {
+  color: oklch(0.42 0.18 145);
+}
+
+/* ── Main grid ──────────────────────────────────────────────────── */
+
+.diagnose-grid {
+  display:               grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap:                   28px;
+  align-items:           start;
+  padding-top:           40px;
+}
+
+/* ── Evidence column ────────────────────────────────────────────── */
+
+.diagnose-evidence {
+  display:        flex;
+  flex-direction: column;
+  gap:            18px;
+  min-width:      0;
+}
+
+/* Evidence panel components render as <section> with Tailwind classes.
+   Override to HardCard appearance. */
+.diagnose-evidence > section {
+  border:        3px solid var(--lp-ink-hard) !important;
+  border-radius: 20px !important;
+  box-shadow:    5px 5px 0 var(--lp-ink-hard) !important;
+  background:    oklch(0.26 0.10 263) !important;
+  overflow:      hidden;
+  padding:       20px 24px !important;
+}
+
+/* ── State card ─────────────────────────────────────────────────── */
+
+.diagnose-state-card {
+  display:        flex;
+  flex-direction: column;
+  gap:            10px;
+  padding:        20px 24px;
+  border:         3px solid var(--lp-ink-hard);
+  border-radius:  20px;
+  box-shadow:     5px 5px 0 var(--lp-ink-hard);
+  background:     oklch(0.26 0.10 263);
+}
+
+.diagnose-state-card--error {
+  background:   oklch(0.72 0.20 15 / 0.14);
+  border-color: oklch(0.72 0.20 15);
+  box-shadow:   5px 5px 0 oklch(0.72 0.20 15);
+}
+
+.diagnose-state-title {
+  font-family:    var(--font-display);
+  font-size:      12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color:          var(--lp-lime);
+}
+
+.diagnose-state-card--error .diagnose-state-title {
+  color: oklch(0.72 0.20 15);
+}
+
+.diagnose-state-body {
+  margin:      0;
+  font-family: var(--font-mono);
+  font-size:   13px;
+  line-height: 1.7;
+  color:       var(--lp-ink-soft);
+}
+
+/* ── Rail ───────────────────────────────────────────────────────── */
+
+.diagnose-rail {
+  display:        flex;
+  flex-direction: column;
+  gap:            14px;
+  position:       sticky;
+  top:            96px;
+  min-width:      0;
+}
+
+.diagnose-rail-card {
+  border:        3px solid var(--lp-ink-hard);
+  border-radius: 20px;
+  box-shadow:    4px 4px 0 var(--lp-ink-hard);
+  background:    oklch(0.26 0.10 263);
+  overflow:      hidden;
+}
+
+.diagnose-rail-title {
+  margin:         0;
+  padding:        10px 16px;
+  border-bottom:  2px solid var(--lp-border-mid);
+  font-family:    var(--font-display);
+  font-size:      11px;
+  font-weight:    400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color:          var(--lp-ink-faint);
+}
+
+.diagnose-badge-stack {
+  display:   flex;
+  flex-wrap: wrap;
+  gap:       8px;
+  padding:   14px 16px;
+}
+
+.diagnose-tool-scroll {
+  display:        flex;
+  flex-direction: column;
+  gap:            6px;
+  padding:        12px 14px;
+  max-height:     240px;
+  overflow-y:     auto;
+}
+
+.diagnose-narrative-scroll {
+  display:        flex;
+  flex-direction: column;
+  gap:            8px;
+  padding:        12px 16px;
+  max-height:     240px;
+  overflow-y:     auto;
+  font-size:      13px;
+  line-height:    1.65;
+  color:          var(--lp-ink-soft);
+}
+
+.diagnose-narrative-scroll p { margin: 0; }
+
+.diagnose-narrative-current {
+  color:       var(--lp-lime);
+  font-family: var(--font-mono);
+  font-size:   12px;
+}
+
+.diagnose-root-hash-area {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+  padding:     14px 16px;
+  flex-wrap:   wrap;
+}
+
+.diagnose-root-hash-mono {
+  font-family:  var(--font-mono);
+  font-size:    13px;
+  color:        var(--lp-lime);
+  overflow-wrap: anywhere;
+  flex:         1;
+  min-width:    0;
+}
+
+.diagnose-copy-btn {
+  flex-shrink: 0;
+  padding:     6px 14px !important;
+  font-size:   11px !important;
+}
+
+.diagnose-muted {
+  font-family: var(--font-mono);
+  font-size:   12px;
+  color:       var(--lp-ink-faint);
+}
+
+/* ── Mascot stethoscope animation ──────────────────────────────── */
+
+.diagnose-stethoscope {
+  stroke-dasharray:  130;
+  stroke-dashoffset: 130;
+}
+
+.diagnose-theme[data-stream="open"] .diagnose-stethoscope {
+  animation: diagnose-stethoscope 6s ease-in-out infinite;
+}
+
+/* ── AppHeader overrides on gradient bg ────────────────────────── */
+
+.diagnose-theme .app-header-brand .chip {
+  border-color: oklch(0.60 0.10 258 / 0.25) !important;
+  background:   oklch(0.30 0.12 263)         !important;
+  color:        oklch(0.52 0.08 260)         !important;
+  font-size:    9px                          !important;
+}
+
+.diagnose-theme .app-header-attestation .chip {
+  height:         auto                            !important;
+  padding:        5px 13px                        !important;
+  font-family:    var(--font-display)             !important;
+  font-size:      10px                            !important;
+  letter-spacing: 0.05em                          !important;
+  text-transform: uppercase                       !important;
+  border-radius:  9999px                          !important;
+  border:         2px solid var(--lp-ink-hard)    !important;
+  box-shadow:     2px 2px 0 var(--lp-ink-hard)    !important;
+  background:     var(--lp-char-cyan)             !important;
+  color:          var(--lp-ink-hard)              !important;
+  line-height:    1.2                             !important;
+}
+
+.diagnose-theme header .btn.btn-ghost {
+  background:     oklch(0.97 0.01 250)             !important;
+  color:          oklch(0.12 0.02 260)             !important;
+  border:         3px solid var(--lp-ink-hard)     !important;
+  border-radius:  9999px                           !important;
+  box-shadow:     4px 4px 0 var(--lp-ink-hard)     !important;
+  font-family:    var(--font-mono)                 !important;
+  font-size:      12px                             !important;
+  font-weight:    800                              !important;
+  letter-spacing: 0                                !important;
+  text-transform: none                             !important;
+  padding:        8px 15px                         !important;
+  transition:     border-color 120ms, color 120ms, box-shadow 80ms, transform 80ms !important;
+}
+
+.diagnose-theme header .btn.btn-ghost:hover {
+  border-color: var(--lp-ink-hard)           !important;
+  color:        oklch(0.12 0.02 260)         !important;
+  background:   var(--lp-lime)               !important;
+  transform:    translate(2px, 2px)          !important;
+  box-shadow:   2px 2px 0 var(--lp-ink-hard) !important;
+}
+
+.diagnose-theme header .btn.btn-ghost .wallet-chain {
+  color:          oklch(0.12 0.02 260 / 0.72) !important;
+  font-family:    var(--font-display);
+  font-size:      10px;
+  font-weight:    400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.diagnose-theme header .btn.btn-ghost .wallet-dot {
+  width:      8px !important;
+  height:     8px !important;
+  background: var(--lp-lime) !important;
+  border:     2px solid var(--lp-ink-hard);
+  box-shadow: none !important;
+}
+
+.diagnose-theme header .btn.btn-ghost:focus-visible {
+  outline:        3px solid var(--lp-lime) !important;
+  outline-offset: 3px !important;
+}
+
+.diagnose-theme .wallet-menu {
+  width:         min(320px, calc(100vw - 32px)) !important;
+  padding:       16px !important;
+  border:        3px solid var(--lp-ink-hard) !important;
+  border-radius: 18px !important;
+  background:    oklch(0.97 0.01 250) !important;
+  color:         oklch(0.12 0.02 260) !important;
+  box-shadow:    6px 6px 0 var(--lp-ink-hard) !important;
+}
+
+.diagnose-theme .wallet-menu::before {
+  content:    '';
+  position:   absolute;
+  top:        -10px;
+  right:      28px;
+  width:      16px;
+  height:     16px;
+  background: oklch(0.97 0.01 250);
+  border-left:  3px solid var(--lp-ink-hard);
+  border-top:   3px solid var(--lp-ink-hard);
+  transform:  rotate(45deg);
+}
+
+.diagnose-theme .wallet-menu-label {
+  font-family:    var(--font-display);
+  font-size:      13px;
+  line-height:    1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.diagnose-theme .wallet-menu-address {
+  margin-top:    12px;
+  padding:       10px 12px;
+  border:        2px solid var(--lp-ink-hard);
+  border-radius: 10px;
+  background:    oklch(0.21 0.11 267);
+  color:         var(--lp-lime);
+  font-family:   var(--font-mono);
+  font-size:     11px;
+  font-weight:   800;
+  line-height:   1.45;
+  word-break:    break-all;
+}
+
+.diagnose-theme .wallet-menu-grid {
+  display:               grid;
+  grid-template-columns: 72px 1fr;
+  gap:                   8px 12px;
+  margin-top:            14px;
+  font-family:           var(--font-mono);
+  font-size:             11px;
+  line-height:           1.3;
+}
+
+.diagnose-theme .wallet-menu-grid span  { color: oklch(0.30 0.06 260); text-transform: uppercase; font-weight: 800; }
+.diagnose-theme .wallet-menu-grid strong { min-width: 0; color: oklch(0.12 0.02 260); font-weight: 900; }
+
+.diagnose-theme .wallet-menu-actions {
+  display:    grid;
+  gap:        8px;
+  margin-top: 16px;
+}
+
+.diagnose-theme .wallet-menu-action {
+  width:          100%;
+  min-height:     36px;
+  border:         2px solid var(--lp-ink-hard);
+  border-radius:  10px;
+  background:     var(--lp-char-cyan);
+  color:          oklch(0.12 0.02 260);
+  box-shadow:     3px 3px 0 var(--lp-ink-hard);
+  font-family:    var(--font-display);
+  font-size:      11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition:     box-shadow 80ms linear, transform 80ms linear, background 100ms;
+}
+
+.diagnose-theme .wallet-menu-address-row {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  margin-top:  12px;
+}
+
+.diagnose-theme .wallet-menu-address-row .wallet-menu-address {
+  flex:       1;
+  min-width:  0;
+  margin-top: 0;
+  overflow:   hidden;
+}
+
+.diagnose-theme .wallet-menu-action.wallet-menu-action-copy {
+  width:           40px;
+  min-width:       40px;
+  min-height:      40px;
+  flex:            0 0 40px;
+  padding:         0;
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  background:      var(--lp-paper);
+  color:           var(--lp-ink-hard);
+  box-shadow:      2px 2px 0 var(--lp-ink-hard);
+  font-family:     var(--font-mono);
+  font-size:       16px;
+  font-weight:     800;
+  line-height:     1;
+  letter-spacing:  0;
+}
+
+.diagnose-theme .wallet-menu-action:hover  { background: var(--lp-lime); }
+.diagnose-theme .wallet-menu-action:active { transform: translate(3px, 3px); box-shadow: none; }
+.diagnose-theme .wallet-menu-action-danger { background: oklch(0.72 0.20 15); }
+
+/* ── Tailwind evidence panel overrides ─────────────────────────── */
+/* Map existing Tailwind color classes in panel components to Open House palette */
+
+.diagnose-theme .rounded-lg,
+.diagnose-theme .rounded-md,
+.diagnose-theme .rounded {
+  border-radius: 12px !important;
+}
+
+.diagnose-theme .bg-slate-900\/50,
+.diagnose-theme .bg-slate-900 {
+  background-color: oklch(0.24 0.10 265) !important;
+}
+
+.diagnose-theme .bg-slate-800 {
+  background-color: oklch(0.28 0.10 263) !important;
+}
+
+.diagnose-theme .hover\:bg-slate-800\/40:hover {
+  background-color: oklch(0.28 0.10 263 / 0.6) !important;
+}
+
+.diagnose-theme .border-slate-700,
+.diagnose-theme .border-slate-800,
+.diagnose-theme .border-slate-500 {
+  border-color: var(--lp-border-mid) !important;
+}
+
+.diagnose-theme .text-slate-600  { color: oklch(0.50 0.06 260) !important; }
+.diagnose-theme .text-slate-500  { color: var(--lp-ink-faint) !important; }
+.diagnose-theme .text-slate-400,
+.diagnose-theme .text-slate-300,
+.diagnose-theme .text-slate-200  { color: var(--lp-ink-soft) !important; }
+
+.diagnose-theme .text-cyan-300,
+.diagnose-theme .hover\:text-cyan-200:hover  { color: var(--lp-char-cyan) !important; }
+
+.diagnose-theme .text-violet-300,
+.diagnose-theme .hover\:text-violet-200:hover { color: oklch(0.72 0.19 296) !important; }
+
+.diagnose-theme .text-emerald-300,
+.diagnose-theme .text-emerald-200,
+.diagnose-theme .hover\:text-emerald-200:hover { color: var(--lp-healthy) !important; }
+
+.diagnose-theme .text-rose-300   { color: var(--lp-bleed) !important; }
+
+.diagnose-theme .text-amber-300,
+.diagnose-theme .text-amber-300\/90,
+.diagnose-theme .text-orange-300,
+.diagnose-theme .text-orange-300\/80 { color: var(--lp-toxic) !important; }
+
+.diagnose-theme .bg-cyan-500\/10,
+.diagnose-theme .bg-emerald-500\/10,
+.diagnose-theme .bg-amber-500\/10,
+.diagnose-theme .bg-orange-500\/10,
+.diagnose-theme .bg-violet-500\/10  { background-color: oklch(0.30 0.10 263) !important; }
+
+.diagnose-theme .border-cyan-500\/40,
+.diagnose-theme .hover\:border-cyan-400\/60:hover { border-color: var(--lp-char-cyan) !important; }
+
+.diagnose-theme .border-emerald-500\/40,
+.diagnose-theme .border-amber-500\/40,
+.diagnose-theme .border-orange-500\/60,
+.diagnose-theme .border-violet-500\/40,
+.diagnose-theme .hover\:border-violet-400\/60:hover { border-color: var(--lp-border-mid) !important; }
+
+.diagnose-theme .prose,
+.diagnose-theme .prose :where(p, li, strong, h1, h2, h3, code):not(:where([class~="not-prose"] *)) {
+  color: var(--lp-ink-soft);
+}
+
+.diagnose-theme section > header h2 {
+  font-family:    var(--font-mono);
+  color:          var(--lp-ink-faint) !important;
+  letter-spacing: 0.12em;
+}
+
+.diagnose-theme section > header {
+  padding-bottom: 10px;
+  border-bottom:  2px solid var(--lp-border-soft);
+}
+
+/* ToolCallBadge inline classes */
+.diagnose-theme .bg-cyan-500\/10.border-cyan-500\/40   { background: oklch(0.68 0.18 230 / 0.18) !important; border-color: oklch(0.68 0.18 230) !important; }
+.diagnose-theme .bg-emerald-500\/10.border-emerald-500\/40 { background: oklch(0.80 0.18 145 / 0.18) !important; border-color: oklch(0.80 0.18 145) !important; }
+
+/* ── Focus ──────────────────────────────────────────────────────── */
+
+.diagnose-theme button:focus-visible,
+.diagnose-theme a:focus-visible {
+  outline:        3px solid var(--lp-lime);
+  outline-offset: 3px;
+}
+
+/* ── Motion ────────────────────────────────────────────────────── */
+
+.diagnose-theme button {
+  transition: box-shadow 80ms linear, transform 80ms linear;
+}
+
+.diagnose-theme button:not(:disabled):hover {
+  transform:  translate(2px, 2px);
+  box-shadow: var(--lp-shadow-hover);
+}
+
+@keyframes diagnose-pill-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.8; }
+}
+
+@keyframes diagnose-stethoscope {
+  0%   { stroke-dashoffset:  130; }
+  40%  { stroke-dashoffset:    0; }
+  60%  { stroke-dashoffset:    0; }
+  100% { stroke-dashoffset: -130; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-mascot-bob,
+  .diagnose-phase-pill--active,
+  .diagnose-stethoscope {
+    animation: none !important;
+  }
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  .diagnose-hero {
+    grid-template-columns: 1fr;
+    gap:                   32px;
+  }
+
+  .diagnose-hero-right {
+    flex-direction: row;
+    flex-wrap:      wrap;
+    align-items:    flex-start;
+    gap:            20px;
+  }
+
+  .diagnose-bubble { max-width: 360px; }
+
+  .diagnose-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .diagnose-rail {
+    position:              static;
+    display:               grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .diagnose-shell {
+    width:   calc(100% - 32px);
+    padding: 24px 0 80px;
+  }
+
+  .diagnose-h1 {
+    font-size: clamp(2.4rem, 14vw, 3.8rem);
+  }
+
+  .diagnose-hero {
+    padding: 32px 0 40px;
+  }
+
+  .diagnose-hero-right {
+    flex-direction: column;
+  }
+
+  .diagnose-scoreboard {
+    grid-template-columns: repeat(3, 1fr);
+    width:                 100%;
+  }
+
+  .diagnose-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .diagnose-theme .grid-cols-3,
+  .diagnose-theme .grid-cols-4,
+  .diagnose-theme .grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+}

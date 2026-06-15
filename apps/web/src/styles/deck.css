@@ -1,0 +1,55 @@
+/* ── Deck page — 1920x1080 slide canvas, auto-scaled to viewport ─── */
+
+.deck-page {
+  display:        flex;
+  flex-direction: column;
+  min-height:     100vh;
+}
+
+.deck-stack {
+  display:        flex;
+  flex-direction: column;
+  gap:            0;
+  position:       relative;
+  z-index:        1;
+}
+
+/* Outer viewport-fit box — 16:9, full page width */
+.deck-viewport {
+  width:          100%;
+  aspect-ratio:   16 / 9;
+  overflow:       hidden;
+  position:       relative;
+  container-type: inline-size;
+}
+
+/* 1920x1080 design canvas — scaled via container inline-size */
+.deck-slide {
+  width:            1920px;
+  height:           1080px;
+  transform-origin: top left;
+  transform:        scale(calc(100cqi / 1920));
+  display:          flex;
+  flex-direction:   column;
+  justify-content:  center;
+  position:         relative;
+  overflow:         hidden;
+}
+
+.deck-slide--plain {
+  background: transparent;
+}
+
+.deck-slide--band {
+  background:    var(--lp-base-deep);
+  border-top:    2px solid var(--lp-border);
+  border-bottom: 2px solid var(--lp-border);
+}
+
+/* Content frame — centered, 100px horizontal padding on 1920 canvas */
+.deck-slide-frame {
+  width:     100%;
+  max-width: 1600px;
+  margin:    0 auto;
+  padding:   0 100px;
+}

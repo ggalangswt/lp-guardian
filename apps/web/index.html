@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/webp" href="/logo-lp-guardian.webp" />
+    <link rel="shortcut icon" type="image/webp" href="/logo-lp-guardian.webp" />
+    <link rel="apple-touch-icon" href="/logo-lp-guardian.webp" />
+    <meta name="theme-color" content="#1a1f4a" />
+    <title>LP Guardian — protect your LP position.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      #lp-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: oklch(0.20 0.13 266);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.45s ease-out;
+      }
+      #lp-splash.lp-splash--exit {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .lp-splash-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(oklch(0.65 0.07 258 / 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, oklch(0.65 0.07 258 / 0.07) 1px, transparent 1px);
+        background-size: 48px 48px;
+        pointer-events: none;
+      }
+      .lp-splash-center {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        user-select: none;
+      }
+      .lp-splash-mascot {
+        width: 120px;
+        height: 120px;
+        object-fit: contain;
+        animation: lp-splash-bob 2.2s ease-in-out infinite;
+      }
+      @keyframes lp-splash-bob {
+        0%, 100% { transform: translateY(0px); }
+        50%       { transform: translateY(-12px); }
+      }
+      .lp-splash-wordmark {
+        font-family: 'Bagel Fat One', system-ui, sans-serif;
+        font-size: clamp(2.8rem, 9vw, 6rem);
+        color: oklch(0.92 0.22 130);
+        text-transform: uppercase;
+        line-height: 0.9;
+        letter-spacing: -0.02em;
+        margin-top: 12px;
+        animation: lp-splash-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      @keyframes lp-splash-rise {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .lp-splash-bar-wrap {
+        width: 140px;
+        height: 3px;
+        background: oklch(0.65 0.07 258 / 0.18);
+        border-radius: 999px;
+        margin-top: 28px;
+        overflow: hidden;
+      }
+      .lp-splash-bar {
+        height: 100%;
+        width: 0%;
+        background: oklch(0.92 0.22 130);
+        border-radius: 999px;
+        animation: lp-splash-fill 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+      }
+      @keyframes lp-splash-fill {
+        from { width: 0%; }
+        to   { width: 100%; }
+      }
+      .lp-splash-sub {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: oklch(0.65 0.07 258 / 0.55);
+        margin-top: 14px;
+        animation: lp-splash-rise 0.55s 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="lp-splash" aria-hidden="true">
+      <div class="lp-splash-grid"></div>
+      <div class="lp-splash-center">
+        <img src="/mascots/mascot1.webp" class="lp-splash-mascot" width="120" height="120" alt="" />
+        <div class="lp-splash-wordmark">LP Guardian</div>
+        <div class="lp-splash-bar-wrap">
+          <div class="lp-splash-bar"></div>
+        </div>
+        <div class="lp-splash-sub">Initializing agent…</div>
+      </div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
