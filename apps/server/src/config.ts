@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 export type StorageProvider = "stub" | "ipfs";
+export type ChainMode = "robinhood" | "mantle";
 
 export interface ServerConfig {
   port: number;
@@ -9,6 +10,7 @@ export interface ServerConfig {
   corsOrigins: string[];
   agentRuntimeProvider: "mock" | "eliza";
   strategistProvider: "mock" | "eliza" | "phala";
+  chainMode: ChainMode;
 
   // --- Chains ---
   arbitrumRpc: string;
@@ -28,6 +30,9 @@ export interface ServerConfig {
   robinhoodCanonicalWalletAddress?: string;
   /** Token ID owned by robinhoodCanonicalWalletAddress on the Robinhood NFPM. */
   robinhoodCanonicalTokenId?: string;
+  mantleRpc: string;
+  mantleRpcUrl?: string;
+  mantleChainId: number;
 
   /** Backend signer used to anchor reports on-chain (0x-prefixed, validated).
    *  Falls back to the deployer key when WALLET_BACKEND_PK is empty. */
@@ -50,6 +55,7 @@ export interface ServerConfig {
   reportRegistryAddress: `0x${string}`;
   riskEngineAddress: `0x${string}`;
   swapReplayVerifierAddress: `0x${string}`;
+  turingRegistryAddress: `0x${string}`;
   /** Same addresses under the names used by the robinhood/* services. */
   lpGuardianReportsContract?: string;
   lpGuardianRiskEngineContract?: string;
@@ -131,6 +137,10 @@ function strategistProvider(
   return "mock";
 }
 
+function chainMode(value: string | undefined): ChainMode {
+  return value === "mantle" ? "mantle" : "robinhood";
+}
+
 function list(value: string | undefined, fallback: string[]): string[] {
   const raw = nonEmpty(value);
   if (!raw) return fallback;
@@ -145,6 +155,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const robinhoodRpc =
     nonEmpty(env.ROBINHOOD_RPC) ?? "https://rpc.testnet.chain.robinhood.com";
   const robinhoodChainId = Number(env.ROBINHOOD_CHAIN_ID ?? 46630);
+  const mantleRpc = nonEmpty(env.MANTLE_RPC) ?? "https://rpc.sepolia.mantle.xyz";
+  const mantleChainId = Number(env.MANTLE_CHAIN_ID ?? 5003);
   const robinhoodScanFromBlock = env.ROBINHOOD_SCAN_FROM_BLOCK
     ? BigInt(env.ROBINHOOD_SCAN_FROM_BLOCK)
     : undefined;
@@ -167,9 +179,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     env.SwapReplayVerifier ?? env.LPGUARDIAN_SWAP_REPLAY_CONTRACT,
     "0x75191d7ca10ea9c36b88b169896d4f258702afa2",
   );
+  const turingRegistry = address(
+    env.LPGUARDIAN_TURING_REGISTRY ?? env.MANTLE_TURING_REGISTRY,
+    "0x0000000000000000000000000000000000000000",
+  );
   // Prefer a dedicated backend key; fall back to the funded deployer key.
   const anchorSignerPk =
-    normalizePk(env.WALLET_BACKEND_PK) ?? normalizePk(env.WALLET_DEPLOYER_PK);
+    normalizePk(env.BACKEND_SIGNER_PK) ??
+    normalizePk(env.WALLET_BACKEND_PK) ??
+    normalizePk(env.WALLET_DEPLOYER_PK);
 
   return {
     port: Number(env.PORT ?? 3100),
@@ -182,6 +200,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     ]),
     agentRuntimeProvider: env.AGENT_RUNTIME === "eliza" ? "eliza" : "mock",
     strategistProvider: strategistProvider(env.STRATEGIST_PROVIDER),
+    chainMode: chainMode(env.LPGUARDIAN_CHAIN_MODE),
 
     arbitrumRpc: nonEmpty(env.ARBITRUM_RPC) ?? "https://arb1.arbitrum.io/rpc",
     arbitrumRpcUrl:
@@ -200,6 +219,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       nonEmpty(env.ROBINHOOD_CANONICAL_WALLET_ADDRESS) ?? undefined,
     robinhoodCanonicalTokenId:
       nonEmpty(env.ROBINHOOD_CANONICAL_TOKEN_ID) ?? undefined,
+    mantleRpc,
+    mantleRpcUrl: mantleRpc,
+    mantleChainId,
 
     anchorSignerPk,
     walletBackendPrivateKey: anchorSignerPk ?? undefined,
@@ -215,6 +237,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     reportRegistryAddress: reportRegistry,
     riskEngineAddress: riskEngine,
     swapReplayVerifierAddress: swapReplayVerifier,
+    turingRegistryAddress: turingRegistry,
     lpGuardianReportsContract: reportRegistry,
     lpGuardianRiskEngineContract: riskEngine,
 

@@ -14,6 +14,7 @@ import { createAgentFoundationRunRoute } from "./routes/agent/run.js";
 import { createPositionsRoute } from "./routes/positions.js";
 import { createReportRoute } from "./routes/report.js";
 import { createPortfolioRoute } from "./routes/portfolio.js";
+import { createTuringRoute } from "./routes/turing.js";
 import { AgentOrchestrator } from "./services/agentOrchestrator.js";
 import {
   AgentStateStore,
@@ -69,6 +70,7 @@ export function createApp(config: ServerConfig, services: AppServices = {}): Hon
   app.route("/api/positions", createPositionsRoute(config));
   app.route("/api/report", createReportRoute(config));
   app.route("/api/portfolio", createPortfolioRoute(config));
+  app.route("/api/turing", createTuringRoute(config));
 
   app.notFound(notFoundHandler);
   app.onError(errorHandler);

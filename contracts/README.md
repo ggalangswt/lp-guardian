@@ -1,16 +1,52 @@
-# LP Guardian Stylus Contracts
+# LP Guardian Contracts
 
-Rust/Arbitrum Stylus contracts for LP Guardian's Robinhood Chain contract track.
+Rust/Arbitrum Stylus contracts for LP Guardian's Robinhood Chain contract track, plus Solidity contracts for the Mantle Turing Test track.
 
 ## Contracts
 
 - `PortfolioReportRegistry`: append-only report anchor registry keyed by `rootHash`.
 - `PortfolioRiskEngine`: deterministic portfolio risk scorer for aggregate LP metrics.
 - `SwapReplayVerifier`: replay proof registry for 1,000-swap TEE simulations.
+- `evm/src/LPGuardianTuringRegistry.sol`: Mantle Solidity registry for ERC-8004-compatible agent identity, agent decisions, and benchmark outcomes.
 
 See `CONTRACTS.md` for the full developer-facing contract reference, function behavior, integration flow, and example `cast` calls.
 
 The Solidity contracts in `../LP-Doctor/contracts` are reference material only. This folder is the canonical Stylus implementation for LP Guardian.
+
+## Mantle Turing Registry
+
+`contracts/evm` is a standalone Foundry package. It intentionally uses Solidity instead of Stylus because Mantle is EVM-compatible and the hackathon requirement is agent identity plus on-chain decision benchmarking, not WASM execution.
+
+The registry implements:
+
+- ERC-721-style agent identity compatible with the ERC-8004 draft direction.
+- `register(agentURI, codeHash)` for agent registration.
+- `recordDecision(...)` for AI decisions.
+- `recordOutcome(...)` for benchmark outcomes and score aggregation.
+- `getAgentStats(agentId)` for reputation-like benchmark state.
+
+Test:
+
+```bash
+cd contracts/evm
+forge test -vvv
+```
+
+Deploy to Mantle Sepolia:
+
+```bash
+cd contracts/evm
+MANTLE_RPC=https://rpc.sepolia.mantle.xyz \
+WALLET_DEPLOYER_PK=0x... \
+bash script/deploy.sh
+```
+
+Mainnet values:
+
+```env
+MANTLE_RPC=https://rpc.mantle.xyz
+MANTLE_CHAIN_ID=5000
+```
 
 ## Robinhood Chain Testnet
 

@@ -387,6 +387,92 @@ export const swapReplayVerifierAbi = [
   },
 ] as const;
 
+export const lpGuardianTuringRegistryAbi = [
+  {
+    type: "function",
+    name: "register",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "agentURI", type: "string" },
+      { name: "codeHash", type: "bytes32" },
+    ],
+    outputs: [{ name: "agentId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "recordDecision",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "subject", type: "address" },
+      { name: "scenarioHash", type: "bytes32" },
+      { name: "reportHash", type: "bytes32" },
+      { name: "action", type: "uint8" },
+      { name: "confidenceBps", type: "uint16" },
+      { name: "riskScoreBps", type: "uint16" },
+      { name: "metadataURI", type: "string" },
+    ],
+    outputs: [{ name: "decisionId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "recordOutcome",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "decisionId", type: "uint256" },
+      { name: "pnlBps", type: "int256" },
+      { name: "scoreBps", type: "uint16" },
+      { name: "outcomeHash", type: "bytes32" },
+      { name: "metadataURI", type: "string" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "getAgentStats",
+    stateMutability: "view",
+    inputs: [{ name: "agentId", type: "uint256" }],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "owner", type: "address" },
+          { name: "codeHash", type: "bytes32" },
+          { name: "registeredAt", type: "uint64" },
+          { name: "updatedAt", type: "uint64" },
+          { name: "totalDecisions", type: "uint64" },
+          { name: "totalOutcomes", type: "uint64" },
+          { name: "totalScoreBps", type: "uint256" },
+          { name: "averageScoreBps", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getDecision",
+    stateMutability: "view",
+    inputs: [{ name: "decisionId", type: "uint256" }],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "agentId", type: "uint256" },
+          { name: "subject", type: "address" },
+          { name: "scenarioHash", type: "bytes32" },
+          { name: "reportHash", type: "bytes32" },
+          { name: "action", type: "uint8" },
+          { name: "confidenceBps", type: "uint16" },
+          { name: "riskScoreBps", type: "uint16" },
+          { name: "timestamp", type: "uint64" },
+          { name: "hasOutcome", type: "bool" },
+          { name: "metadataURI", type: "string" },
+        ],
+      },
+    ],
+  },
+] as const;
+
 // Uniswap V3 / Algebra pool Swap event — read from Arbitrum logs to source the
 // real swaps fed into the off-chain replay. Algebra emits the same topic shape
 // (the 5th field is `price` not `sqrtPriceX96`, but decoding is identical).
