@@ -1,0 +1,13 @@
+{
+  "network": "mantle-sepolia",
+  "chainId": 5003,
+  "rpc": "https://rpc.sepolia.mantle.xyz",
+  "contract": "LPGuardianTuringRegistry",
+  "address": "0x3338C6C85399e9E9d28233a186643a5383C6c736",
+  "deployer": "0xf2Fd0c765338e05FD25bF6081291b87428421e50",
+  "transactionHash": "0x929474928d21c3fc69ab2a565e4894213edf72befe3bebac3f828e9dc8c6f47e",
+  "constructorArgs": {
+    "name": "LP Guardian Turing Agent",
+    "symbol": "LPGTA"
+  }
+}

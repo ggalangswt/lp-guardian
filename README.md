@@ -79,8 +79,14 @@ Default testnet configuration:
 LPGUARDIAN_CHAIN_MODE=mantle
 MANTLE_RPC=https://rpc.sepolia.mantle.xyz
 MANTLE_CHAIN_ID=5003
-MANTLE_TURING_REGISTRY=<deployed registry>
+MANTLE_TURING_REGISTRY=0x3338C6C85399e9E9d28233a186643a5383C6c736
 ```
+
+Mantle Sepolia deployment:
+
+| Contract | Address | Deploy Tx |
+| --- | --- | --- |
+| `LPGuardianTuringRegistry` | `0x3338C6C85399e9E9d28233a186643a5383C6c736` | `0x929474928d21c3fc69ab2a565e4894213edf72befe3bebac3f828e9dc8c6f47e` |
 
 Mainnet configuration:
 

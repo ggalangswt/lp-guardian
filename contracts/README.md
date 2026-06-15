@@ -41,6 +41,12 @@ WALLET_DEPLOYER_PK=0x... \
 bash script/deploy.sh
 ```
 
+Current Mantle Sepolia deployment:
+
+| Contract | Address | Deploy Tx |
+| --- | --- | --- |
+| `LPGuardianTuringRegistry` | `0x3338C6C85399e9E9d28233a186643a5383C6c736` | `0x929474928d21c3fc69ab2a565e4894213edf72befe3bebac3f828e9dc8c6f47e` |
+
 Mainnet values:
 
 ```env
