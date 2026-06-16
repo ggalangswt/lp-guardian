@@ -1,0 +1,14 @@
+# Local development convenience. For AWS Nitro, use build_eif.sh instead — an
+# enclave is not a normal container and cannot be run via docker-compose.
+services:
+  be-data:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - BE_DATA_PORT=8000
+      - TEE_PROVIDER=auto # -> developer-key off-enclave
+      - BYBIT_API_BASE=https://api.bybit.com
+      # - BYBIT_API_KEY=
+      # - DEVELOPER_SIGNING_KEY=
+    restart: unless-stopped

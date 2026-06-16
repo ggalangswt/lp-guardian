@@ -33,6 +33,7 @@ import {
   type CorrelationResponse,
   type OptimizeResponse,
   type SimulateResponse,
+  type TeeSignResponse,
 } from "./beDataClient.js";
 import { recordTuringDecision, recordTuringOutcome } from "../chain/turingRegistry.js";
 
@@ -122,6 +123,7 @@ interface AgentContext {
   beDataCorrelation?: BeDataResult<CorrelationResponse>;
   beDataSimulation?: BeDataResult<SimulateResponse>;
   beDataOptimization?: BeDataResult<OptimizeResponse>;
+  beDataTeeSign?: BeDataResult<TeeSignResponse>;
 }
 
 interface AgentMessageProvenance {
@@ -937,6 +939,23 @@ class OptimizeAgent extends PortfolioAgent {
       },
     });
     context.beDataOptimization = beDataOptimization;
+
+    // BE Data TEE signing: bind the report hash + optimization output to a TEE
+    // attestation. When the BE Data service runs inside an AWS Nitro enclave the
+    // attestationHash is a real hardware quote hash; otherwise it is a
+    // developer-key emulation. Including `attestationHash` in the payload makes
+    // messageProvenance() mark this message VERIFIED automatically.
+    const beDataTeeSign = await this.beDataClient.teeSign({
+      inputData: scanPositionsForBeData(context.scan),
+      outputData: beDataOptimization.data ?? null,
+      reportHash: context.diagnosis.report.rootHash,
+    });
+    context.beDataTeeSign = beDataTeeSign;
+    const teeAttestationHash =
+      beDataTeeSign.ok && beDataTeeSign.data?.provider === "aws-nitro"
+        ? beDataTeeSign.data.attestationHash
+        : undefined;
+
     const turingDecision = await this.maybeRecordTuringDecision(context, proposal);
 
     return {
@@ -948,10 +967,16 @@ class OptimizeAgent extends PortfolioAgent {
       proposalStatus: "preview",
       rebalanceProposal: proposal,
       reportRoot: context.diagnosis.report.rootHash,
+      attestationHash: teeAttestationHash,
       beData: {
         ok: beDataOptimization.ok,
         data: beDataOptimization.data,
         provenance: beDataOptimization.provenance,
+      },
+      teeSign: {
+        ok: beDataTeeSign.ok,
+        data: beDataTeeSign.data,
+        provenance: beDataTeeSign.provenance,
       },
       turingDecision,
       note:
