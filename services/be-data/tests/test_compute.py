@@ -137,6 +137,74 @@ def test_optimize_actions_reference_valid_token_ids():
         assert "/" in action["pool"]
 
 
+# --- B1/B2: real covariance & vol from priceHistory --------------------------
+
+def _ph(token, closes):
+    return {"token": token, "closes": closes}
+
+
+def test_build_position_risk_usable_with_full_price_history():
+    from compute.returns import build_position_risk
+    from compute.common import parse_positions
+    positions = parse_positions([_pos("1", WMNT, WBTC), _pos("2", WETH, WBTC)])
+    ph = [
+        _ph(WMNT, [100, 110, 105, 120, 115, 130, 125]),
+        _ph(WBTC, [100, 101, 102, 103, 104, 105, 106]),
+        _ph(WETH, [100, 108, 104, 118, 112, 128, 122]),
+    ]
+    risk = build_position_risk(positions, ph)
+    assert risk["usable"] is True
+    assert risk["cov"].shape == (2, 2)
+    assert len(risk["vols"]) == 2
+    # A volatile pair must have higher vol than a near-flat one.
+    assert risk["vols"][0] > 0
+
+
+def test_build_position_risk_unusable_when_leg_missing():
+    from compute.returns import build_position_risk
+    from compute.common import parse_positions
+    positions = parse_positions([_pos("1", WMNT, WBTC)])
+    # Only one leg has prices -> cannot build, must fall back.
+    risk = build_position_risk(positions, [_ph(WMNT, [1, 2, 3])])
+    assert risk["usable"] is False
+
+
+def test_optimize_uses_real_covariance_source_with_price_history():
+    positions = [_pos("1", WMNT, WBTC, "5e18"), _pos("2", WETH, WBTC, "2e18")]
+    ph = [
+        _ph(WMNT, [100, 130, 90, 140, 80, 150, 70]),   # very volatile
+        _ph(WBTC, [100, 100.5, 101, 101.5, 102, 102.5, 103]),  # calm
+        _ph(WETH, [100, 101, 100.5, 101.5, 101, 102, 101.5]),  # calm
+    ]
+    out = compute_optimize(positions, None, {}, ph)
+    assert out["covarianceSource"].startswith("priceHistory")
+    assert out["provenance"]["label"] == "COMPUTED"
+    # Risk-parity should under-weight the high-vol position (token1 = WMNT pair).
+    assert out["optimalWeights"]["1"] < out["optimalWeights"]["2"]
+
+
+def test_optimize_falls_back_without_price_history():
+    positions = [_pos("1", WMNT, WBTC), _pos("2", WETH, WBTC)]
+    out = compute_optimize(positions, None, {}, [])
+    assert "unit variance" in out["covarianceSource"]
+
+
+def test_simulate_uses_real_vol_source_with_price_history():
+    positions = [_pos("1", WMNT, WBTC, "5e18")]
+    ph = [
+        _ph(WMNT, [100, 130, 90, 140, 80, 150, 70]),
+        _ph(WBTC, [100, 101, 102, 103, 104, 105, 106]),
+    ]
+    out = compute_simulate(positions, ["HOLD"], price_history=ph)
+    assert out["volatilitySource"] == "priceHistory realized volatility"
+
+
+def test_simulate_falls_back_vol_without_price_history():
+    positions = [_pos("1", WMNT, WBTC, "5e18")]
+    out = compute_simulate(positions, ["HOLD"])
+    assert "proxy" in out["volatilitySource"]
+
+
 # --- simulation --------------------------------------------------------------
 
 def test_simulate_baseline_expands_to_all_scenarios():
@@ -224,16 +292,23 @@ def test_report_data_hex_is_32_bytes():
 
 def test_verify_developer_key_roundtrip():
     from tee.verify import verify_attestation
+    from tee.common import report_commitment
     inp, outp, rh = {"positions": [1, 2]}, {"corr": 0.5}, "0xabc"
     signed = tee_sign.sign_report(inp, outp, rh)
     res = verify_attestation(signed["attestation"], inp, outp, rh, signed["provider"])
     assert res["verified"] is True
-    assert res["commitment"] == "0x" + __import__("hashlib").sha256(
-        __import__("json").dumps(
-            {"inputData": inp, "outputData": outp, "reportHash": rh},
-            sort_keys=True, separators=(",", ":"), default=str,
-        ).encode()
-    ).hexdigest()
+    assert res["commitment"] == "0x" + report_commitment(inp, outp, rh).hex()
+
+
+def test_canon_matches_cross_language_fixtures():
+    # These exact strings must equal the Node `canonicalize` output (see
+    # apps/server teeVerify). Locks the cross-language contract.
+    from tee.common import _canon
+    assert _canon({"b": 1, "a": 2}) == '{"a":2,"b":1}'      # sorted keys
+    assert _canon(1.0) == "1"                                 # integer-valued float
+    assert _canon(0.5) == "0.500000"                          # 6dp
+    assert _canon(0.062202) == "0.062202"
+    assert _canon([1, "x", True, None]) == '[1,"x",true,null]'
 
 
 def test_verify_developer_key_detects_tampered_inputs():
@@ -327,3 +402,41 @@ def test_require_auth_enforced_when_token_set(monkeypatch):
             assert False, f"expected 401 for {bad!r}"
         except HTTPException as exc:
             assert exc.status_code == 401
+
+
+# --- B6 hardening -------------------------------------------------------------
+
+def test_payload_size_cap_returns_413(monkeypatch):
+    import main
+    from config import Settings
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(main, "settings", Settings(max_body_bytes=50, rate_limit_per_min=0))
+    main._rate_state.clear()
+    client = TestClient(main.app)
+    big = {"positions": [{"blob": "x" * 500}], "priceHistory": []}
+    assert client.post("/compute/correlation", json=big).status_code == 413
+
+
+def test_rate_limit_returns_429(monkeypatch):
+    import main
+    from config import Settings
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(main, "settings", Settings(max_body_bytes=0, rate_limit_per_min=3))
+    main._rate_state.clear()
+    client = TestClient(main.app)
+    small = {"positions": [], "priceHistory": []}
+    codes = [client.post("/compute/correlation", json=small).status_code for _ in range(5)]
+    assert codes[:3] == [200, 200, 200]
+    assert 429 in codes[3:]
+
+
+def test_health_open_under_hardening(monkeypatch):
+    import main
+    from config import Settings
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(main, "settings", Settings(max_body_bytes=10, rate_limit_per_min=1))
+    main._rate_state.clear()
+    client = TestClient(main.app)
+    # GET /health is never capped/limited.
+    for _ in range(5):
+        assert client.get("/health").status_code == 200

@@ -16,10 +16,12 @@ Endpoints (schemas mirror apps/server/src/services/beDataClient.ts):
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from compute.correlation import compute_correlation
@@ -42,6 +44,34 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="LP Guardian BE Data", version="1.0.0", lifespan=lifespan)
 
+# Fixed-window per-IP rate-limit state: ip -> (window_minute, count).
+_rate_state: dict[str, tuple[int, int]] = {}
+
+
+@app.middleware("http")
+async def harden(request: Request, call_next):
+    """Payload-size cap (413) + per-IP rate limit (429) on POST endpoints."""
+    if request.method == "POST":
+        cap = settings.max_body_bytes
+        if cap > 0:
+            length = request.headers.get("content-length")
+            if length and length.isdigit() and int(length) > cap:
+                return JSONResponse(status_code=413, content={"detail": "payload too large"})
+
+        rpm = settings.rate_limit_per_min
+        if rpm > 0:
+            ip = request.client.host if request.client else "unknown"
+            window = int(time.time() // 60)
+            w, count = _rate_state.get(ip, (window, 0))
+            if w != window:
+                w, count = window, 0
+            count += 1
+            _rate_state[ip] = (w, count)
+            if count > rpm:
+                return JSONResponse(status_code=429, content={"detail": "rate limit exceeded"})
+
+    return await call_next(request)
+
 
 def require_auth(authorization: str | None = Header(default=None)) -> None:
     """Enforce Bearer auth on protected endpoints when BE_DATA_AUTH_TOKEN is set."""
@@ -63,11 +93,13 @@ class OptimizeRequest(BaseModel):
     positions: list[dict[str, Any]] = Field(default_factory=list)
     correlation: Any = None
     constraints: dict[str, Any] = Field(default_factory=dict)
+    priceHistory: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class SimulateRequest(BaseModel):
     positions: list[dict[str, Any]] = Field(default_factory=list)
     scenarios: list[str] = Field(default_factory=list)
+    priceHistory: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class TeeSignRequest(BaseModel):
@@ -102,12 +134,12 @@ async def correlation(req: CorrelationRequest) -> dict:
 
 @app.post("/compute/optimize", dependencies=[Depends(require_auth)])
 async def optimize(req: OptimizeRequest) -> dict:
-    return compute_optimize(req.positions, req.correlation, req.constraints)
+    return compute_optimize(req.positions, req.correlation, req.constraints, req.priceHistory)
 
 
 @app.post("/compute/simulate", dependencies=[Depends(require_auth)])
 async def simulate(req: SimulateRequest) -> dict:
-    return compute_simulate(req.positions, req.scenarios)
+    return compute_simulate(req.positions, req.scenarios, price_history=req.priceHistory)
 
 
 @app.post("/tee/sign", dependencies=[Depends(require_auth)])

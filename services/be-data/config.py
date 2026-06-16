@@ -70,5 +70,13 @@ class Settings:
         default_factory=lambda: _env_int("BE_DATA_MONTE_CARLO_PATHS", 1000)
     )
 
+    # Hardening for the public CVM endpoints (0 disables a check).
+    max_body_bytes: int = field(
+        default_factory=lambda: _env_int("BE_DATA_MAX_BODY_BYTES", 1_000_000)
+    )
+    rate_limit_per_min: int = field(
+        default_factory=lambda: _env_int("BE_DATA_RATE_LIMIT_PER_MIN", 120)
+    )
+
 
 settings = Settings()

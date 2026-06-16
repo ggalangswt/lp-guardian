@@ -26,6 +26,7 @@ from .common import (
     parse_positions,
     provenance,
 )
+from .returns import build_position_risk
 
 _SOURCE = "BE Data /compute/simulate"
 _HORIZON_DAYS = 7
@@ -69,7 +70,12 @@ def _impermanent_loss(price_ratio: np.ndarray) -> np.ndarray:
 
 
 def _simulate_scenario(
-    name: str, active_sizes: np.ndarray, vol_scale: float, fee_scale: float, rng: np.random.Generator
+    name: str,
+    active_sizes: np.ndarray,
+    active_vols: np.ndarray,
+    vol_scale: float,
+    fee_scale: float,
+    rng: np.random.Generator,
 ) -> dict:
     total_size = float(active_sizes.sum())
     if total_size <= 0:
@@ -81,11 +87,12 @@ def _simulate_scenario(
         }
 
     paths = settings.monte_carlo_paths
-    daily_vol = _DAILY_VOL * vol_scale
+    # Per-position daily volatility (vector), scaled per scenario.
+    daily_vol = active_vols * vol_scale  # shape (positions,)
     weights = active_sizes / total_size
 
     # Geometric Brownian motion for each position's price ratio over the horizon.
-    # shape: (paths, positions)
+    # Each position uses its own volatility; shape: (paths, days, positions).
     shocks = rng.normal(
         loc=-0.5 * daily_vol**2,
         scale=daily_vol,
@@ -116,6 +123,7 @@ def compute_simulate(
     raw_positions: list[dict] | None,
     scenarios: list[str] | None = None,
     seed: int | None = 42,
+    price_history: list[dict] | None = None,
 ) -> dict:
     positions: list[Position] = parse_positions(raw_positions)
     names = _expand_scenarios(scenarios)
@@ -139,24 +147,40 @@ def compute_simulate(
         sizes = np.ones(len(positions))
         warnings.append("All positions have zero liquidity; assuming equal sizes.")
 
+    # Per-position daily volatility from priceHistory when available, else the
+    # fixed proxy applied uniformly.
+    risk = build_position_risk(positions, price_history)
+    if risk["usable"]:
+        vols = np.asarray(risk["vols"], dtype=float)
+        vol_source = "priceHistory realized volatility"
+    else:
+        vols = np.full(len(positions), _DAILY_VOL, dtype=float)
+        vol_source = f"fixed {_DAILY_VOL:.0%}/day proxy"
+        warnings.append("No usable priceHistory; using fixed volatility proxy.")
+
     dust_mask = sizes >= settings.dust_threshold_liquidity
-    consolidated_sizes = sizes[dust_mask] if dust_mask.any() else sizes
+    keep = dust_mask if dust_mask.any() else np.ones(len(positions), dtype=bool)
+    consolidated_sizes = sizes[keep]
+    consolidated_vols = vols[keep]
 
     results: list[dict] = []
     for name in names:
         if name == "HOLD":
-            results.append(_simulate_scenario(name, sizes, 1.0, 1.0, rng))
+            results.append(_simulate_scenario(name, sizes, vols, 1.0, 1.0, rng))
         elif name == "REBALANCE":
             # Rebalancing reduces correlated exposure -> lower effective vol,
             # but churn costs a little fee yield.
-            results.append(_simulate_scenario(name, sizes, 0.7, 0.9, rng))
+            results.append(_simulate_scenario(name, sizes, vols, 0.7, 0.9, rng))
         elif name == "CONSOLIDATE_DUST":
             # Dropping dust concentrates liquidity into fee-earning ranges.
-            results.append(_simulate_scenario(name, consolidated_sizes, 1.0, 1.15, rng))
+            results.append(
+                _simulate_scenario(name, consolidated_sizes, consolidated_vols, 1.0, 1.15, rng)
+            )
         else:
-            results.append(_simulate_scenario(name, sizes, 1.0, 1.0, rng))
+            results.append(_simulate_scenario(name, sizes, vols, 1.0, 1.0, rng))
 
     return {
         "results": results,
+        "volatilitySource": vol_source,
         "provenance": provenance(LABEL_COMPUTED, _SOURCE, warnings),
     }

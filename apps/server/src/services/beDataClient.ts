@@ -92,6 +92,7 @@ export class BeDataClient {
     positions: unknown[];
     correlation: unknown;
     constraints: unknown;
+    priceHistory?: unknown[];
   }): Promise<BeDataResult<OptimizeResponse>> {
     return this.post<OptimizeResponse>("/compute/optimize", input);
   }
@@ -99,6 +100,7 @@ export class BeDataClient {
   async computeSimulate(input: {
     positions: unknown[];
     scenarios: string[];
+    priceHistory?: unknown[];
   }): Promise<BeDataResult<SimulateResponse>> {
     return this.post<SimulateResponse>("/compute/simulate", input);
   }

@@ -36,6 +36,7 @@ import {
   type TeeSignResponse,
 } from "./beDataClient.js";
 import { fetchMantlePriceHistory } from "../prices/mantlePriceHistory.js";
+import { verifyTeeBinding } from "./teeVerify.js";
 import { recordTuringDecision, recordTuringOutcome } from "../chain/turingRegistry.js";
 
 export type FoundationRunMode = "mock" | "eliza";
@@ -125,6 +126,8 @@ interface AgentContext {
   beDataSimulation?: BeDataResult<SimulateResponse>;
   beDataOptimization?: BeDataResult<OptimizeResponse>;
   beDataTeeSign?: BeDataResult<TeeSignResponse>;
+  /** Mantle token close series fetched once and reused across correlate/simulate/optimize. */
+  priceHistory?: unknown[];
 }
 
 interface AgentMessageProvenance {
@@ -533,6 +536,24 @@ function uniqueTokenAddressesFromScan(scan?: WalletRiskInputResult): string[] {
   return [...seen];
 }
 
+/**
+ * Fetch Mantle token price history once per run and cache it on the context, so
+ * correlate / simulate / optimize all reuse the same attested `priceHistory`
+ * inputs (the TEE CVM cannot fetch prices itself).
+ */
+async function ensurePriceHistory(
+  config: ServerConfig,
+  context: AgentContext,
+): Promise<unknown[]> {
+  if (context.priceHistory) return context.priceHistory;
+  const tokens = uniqueTokenAddressesFromScan(context.scan);
+  const priceHistory = tokens.length
+    ? await fetchMantlePriceHistory(config, tokens).catch(() => [])
+    : [];
+  context.priceHistory = priceHistory;
+  return priceHistory;
+}
+
 function stableStringify(value: unknown): string {
   return JSON.stringify(normalizeForWire(value), (_key, entry) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
@@ -754,11 +775,8 @@ class CorrelateAgent extends PortfolioAgent {
 
     // The TEE CVM cannot reach price APIs, so we fetch close series here (the
     // backend has egress) and pass them in as attested inputs; correlation is
-    // still computed inside the enclave.
-    const tokenAddresses = uniqueTokenAddressesFromScan(context.scan);
-    const priceHistory = tokenAddresses.length
-      ? await fetchMantlePriceHistory(this.config, tokenAddresses).catch(() => [])
-      : [];
+    // still computed inside the enclave. Cached on context for simulate/optimize.
+    const priceHistory = await ensurePriceHistory(this.config, context);
 
     const beDataCorrelation = await this.beDataClient.computeCorrelation({
       positions: scanPositionsForBeData(context.scan),
@@ -795,6 +813,7 @@ function confidenceForTuringDecision(
 
 class SimulateAgent extends PortfolioAgent {
   constructor(
+    private readonly config: ServerConfig,
     private readonly portfolioService: PortfolioService,
     private readonly beDataClient: BeDataClient,
   ) {
@@ -805,6 +824,7 @@ class SimulateAgent extends PortfolioAgent {
     const beDataSimulation = await this.beDataClient.computeSimulate({
       positions: scanPositionsForBeData(context.scan),
       scenarios: [context.input.scenario ?? "baseline"],
+      priceHistory: await ensurePriceHistory(this.config, context),
     });
     context.beDataSimulation = beDataSimulation;
 
@@ -1061,6 +1081,7 @@ class OptimizeAgent extends PortfolioAgent {
         userApproved: Boolean(context.input.userApproved),
         proposalHash: proposal.proposalHash,
       },
+      priceHistory: await ensurePriceHistory(this.config, context),
     });
     context.beDataOptimization = beDataOptimization;
 
@@ -1069,19 +1090,33 @@ class OptimizeAgent extends PortfolioAgent {
     // attestationHash is a real hardware quote hash; otherwise it is a
     // developer-key emulation. Including `attestationHash` in the payload makes
     // messageProvenance() mark this message VERIFIED automatically.
+    const teeInput = scanPositionsForBeData(context.scan);
+    const teeOutput = beDataOptimization.data ?? null;
+    const teeReportHash = context.diagnosis.report.rootHash;
     const beDataTeeSign = await this.beDataClient.teeSign({
-      inputData: scanPositionsForBeData(context.scan),
-      outputData: beDataOptimization.data ?? null,
-      reportHash: context.diagnosis.report.rootHash,
+      inputData: teeInput,
+      outputData: teeOutput,
+      reportHash: teeReportHash,
     });
     context.beDataTeeSign = beDataTeeSign;
-    // Only a real hardware attestation (Phala TDX or AWS Nitro) marks the
-    // message VERIFIED; developer-key / mock stays EMULATED.
+
+    // Independently verify (in this process, NOT trusting the CVM) that the
+    // attestation's report_data binds to exactly the inputs/outputs we sent.
+    const teeBinding = verifyTeeBinding(
+      beDataTeeSign.data?.attestation,
+      teeInput,
+      teeOutput,
+      teeReportHash,
+    );
+
+    // A message is VERIFIED only if the provider is real hardware (Phala TDX or
+    // AWS Nitro) AND the locally-verified binding holds. developer-key / mock or
+    // a binding mismatch stays EMULATED.
     const verifiedTeeProvider =
       beDataTeeSign.data?.provider === "phala" ||
       beDataTeeSign.data?.provider === "aws-nitro";
     const teeAttestationHash =
-      beDataTeeSign.ok && verifiedTeeProvider
+      beDataTeeSign.ok && verifiedTeeProvider && teeBinding.verified
         ? beDataTeeSign.data?.attestationHash
         : undefined;
 
@@ -1115,6 +1150,11 @@ class OptimizeAgent extends PortfolioAgent {
         ok: beDataTeeSign.ok,
         data: beDataTeeSign.data,
         provenance: beDataTeeSign.provenance,
+      },
+      teeBinding: {
+        verified: teeBinding.verified,
+        commitment: teeBinding.commitment,
+        warnings: teeBinding.warnings,
       },
       turingDecision,
       teeAnchor,
@@ -1280,7 +1320,7 @@ export class AgentOrchestrator {
     this.agents = {
       scan: new ScanAgent(this.portfolioService),
       correlate: new CorrelateAgent(config, this.beDataClient),
-      simulate: new SimulateAgent(this.portfolioService, this.beDataClient),
+      simulate: new SimulateAgent(config, this.portfolioService, this.beDataClient),
       optimize: new OptimizeAgent(config, this.beDataClient),
       execute: new ExecuteAgent(),
       monitor: new MonitorAgent(config, monitorService),

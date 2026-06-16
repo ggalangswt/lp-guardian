@@ -16,7 +16,9 @@
     "canonical:smoke": "tsx src/scripts/smokeCanonicalRobinhood.ts",
     "scan:robinhood-transfers": "tsx src/scripts/scanRobinhoodTransfers.ts",
     "smoke:robinhood-contracts": "tsx src/scripts/smokeRobinhoodContracts.ts",
-    "smoke:swap-replay": "tsx src/scripts/smokeSwapReplay.ts"
+    "smoke:swap-replay": "tsx src/scripts/smokeSwapReplay.ts",
+    "tee:verify:test": "tsx src/scripts/testTeeVerify.ts",
+    "pricehistory:test": "tsx src/scripts/testMantlePriceHistory.ts"
   },
   "dependencies": {
     "@elizaos/core": "2.0.0-alpha.77",
