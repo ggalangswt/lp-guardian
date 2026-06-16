@@ -288,6 +288,22 @@ function callPortfolioDiagnose(
   }, extras);
 }
 
+function queuePortfolioDiagnose(
+  args: JsonObject,
+  extras: JsonObject = {},
+): Promise<ToolResult> {
+  return callBackendTool("/portfolio/diagnose", {
+    method: "POST",
+    body: JSON.stringify(portfolioDiagnosisBody(args)),
+  }, {
+    ...extras,
+    warnings: [
+      ...((extras.warnings as string[] | undefined) ?? []),
+      "Diagnosis was queued; consume streamUrl for agent progress and final messages.",
+    ],
+  });
+}
+
 function callAgentRun(
   args: JsonObject,
   targetAgent: "correlate" | "simulate" | "optimize" | "execute" | "monitor",
@@ -358,7 +374,7 @@ export async function callTool(name: string, rawArgs: unknown): Promise<ToolResu
       });
 
     case "portfolio_diagnose":
-      return callAgentRun(args, "correlate", accessExtras);
+      return queuePortfolioDiagnose(args, accessExtras);
 
     case "portfolio_simulate":
       return callAgentRun(args, "simulate", {
