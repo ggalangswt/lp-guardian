@@ -8,7 +8,13 @@ export interface RawToken {
   decimals: string;
 }
 
-export type Protocol = "uniswap-v3" | "uniswap-v4" | "camelot";
+export type Protocol =
+  | "uniswap-v3"
+  | "uniswap-v4"
+  | "camelot"
+  | "merchant-moe"
+  | "agni"
+  | "fluxion";
 
 export interface V3PositionRaw {
   id: string;
