@@ -1,0 +1,24 @@
+# Phala Cloud deployment manifest for the BE Data service.
+#
+# Deploy on a CPU (Intel TDX) CVM — NOT a GPU instance — so it's covered by the
+# free $20 CVM credits. The dstack guest-agent socket is bind-mounted to give the
+# container TDX attestation; tee/sign.py then auto-detects it and /tee/sign
+# returns a real quote (provider: "phala", VERIFIED).
+#
+# Build + push an amd64 image first (Phala TDX runs linux/amd64):
+#   docker buildx build --platform linux/amd64 \
+#     -t <your-dockerhub-user>/lp-guardian-be-data:latest --push .
+services:
+  be-data:
+    image: ${BE_DATA_IMAGE:-scientivan/lp-guardian-be-data:latest}
+    ports:
+      - "8000:8000"
+    volumes:
+      # dstack guest-agent socket — this is what makes attestation real.
+      - /var/run/dstack.sock:/var/run/dstack.sock
+    environment:
+      - BE_DATA_PORT=8000
+      - TEE_PROVIDER=auto # -> phala once the socket above is present
+      - BYBIT_API_BASE=https://api.bybit.com
+      # - BYBIT_API_KEY=        # optional; set as an encrypted secret
+    restart: always

@@ -35,6 +35,7 @@ import {
   type SimulateResponse,
   type TeeSignResponse,
 } from "./beDataClient.js";
+import { fetchMantlePriceHistory } from "../prices/mantlePriceHistory.js";
 import { recordTuringDecision, recordTuringOutcome } from "../chain/turingRegistry.js";
 
 export type FoundationRunMode = "mock" | "eliza";
@@ -502,6 +503,17 @@ function scanPositionsForBeData(scan?: WalletRiskInputResult): unknown[] {
   return Array.isArray(positions) ? positions : [];
 }
 
+/** Unique lowercased token0/token1 addresses across a scan's positions. */
+function uniqueTokenAddressesFromScan(scan?: WalletRiskInputResult): string[] {
+  const seen = new Set<string>();
+  for (const pos of scan?.scan.positions ?? []) {
+    for (const addr of [pos.token0, pos.token1]) {
+      if (addr) seen.add(addr.toLowerCase());
+    }
+  }
+  return [...seen];
+}
+
 function stableStringify(value: unknown): string {
   return JSON.stringify(normalizeForWire(value), (_key, entry) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
@@ -709,7 +721,10 @@ class ScanAgent extends PortfolioAgent {
 }
 
 class CorrelateAgent extends PortfolioAgent {
-  constructor(private readonly beDataClient: BeDataClient) {
+  constructor(
+    private readonly config: ServerConfig,
+    private readonly beDataClient: BeDataClient,
+  ) {
     super("correlate");
   }
 
@@ -718,9 +733,17 @@ class CorrelateAgent extends PortfolioAgent {
       throw new Error("CorrelateAgent requires ScanAgent output.");
     }
 
+    // The TEE CVM cannot reach price APIs, so we fetch close series here (the
+    // backend has egress) and pass them in as attested inputs; correlation is
+    // still computed inside the enclave.
+    const tokenAddresses = uniqueTokenAddressesFromScan(context.scan);
+    const priceHistory = tokenAddresses.length
+      ? await fetchMantlePriceHistory(this.config, tokenAddresses).catch(() => [])
+      : [];
+
     const beDataCorrelation = await this.beDataClient.computeCorrelation({
       positions: scanPositionsForBeData(context.scan),
-      priceHistory: [],
+      priceHistory,
     });
     context.beDataCorrelation = beDataCorrelation;
 
@@ -951,9 +974,14 @@ class OptimizeAgent extends PortfolioAgent {
       reportHash: context.diagnosis.report.rootHash,
     });
     context.beDataTeeSign = beDataTeeSign;
+    // Only a real hardware attestation (Phala TDX or AWS Nitro) marks the
+    // message VERIFIED; developer-key / mock stays EMULATED.
+    const verifiedTeeProvider =
+      beDataTeeSign.data?.provider === "phala" ||
+      beDataTeeSign.data?.provider === "aws-nitro";
     const teeAttestationHash =
-      beDataTeeSign.ok && beDataTeeSign.data?.provider === "aws-nitro"
-        ? beDataTeeSign.data.attestationHash
+      beDataTeeSign.ok && verifiedTeeProvider
+        ? beDataTeeSign.data?.attestationHash
         : undefined;
 
     const turingDecision = await this.maybeRecordTuringDecision(context, proposal);
@@ -1140,7 +1168,7 @@ export class AgentOrchestrator {
     this.beDataClient = new BeDataClient(config);
     this.agents = {
       scan: new ScanAgent(this.portfolioService),
-      correlate: new CorrelateAgent(this.beDataClient),
+      correlate: new CorrelateAgent(config, this.beDataClient),
       simulate: new SimulateAgent(this.portfolioService, this.beDataClient),
       optimize: new OptimizeAgent(config, this.beDataClient),
       execute: new ExecuteAgent(),

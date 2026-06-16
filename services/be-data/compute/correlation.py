@@ -36,6 +36,42 @@ def _daily_returns(closes: list[float]) -> np.ndarray:
     return rets[np.isfinite(rets)]
 
 
+def _closes_from_price_history(price_history: list[dict] | None) -> dict[str, list[float]]:
+    """Index a caller-supplied priceHistory into token-address -> close series.
+
+    Accepts entries shaped ``{token, closes:[..]}`` or ``{token, prices:[{price}|[ts,price]]}``.
+    Used when BE Agent fetches prices itself (e.g. inside a TEE CVM that cannot
+    reach Bybit) and passes them in as attested inputs.
+    """
+    out: dict[str, list[float]] = {}
+    for entry in price_history or []:
+        if not isinstance(entry, dict):
+            continue
+        token = str(entry.get("token", entry.get("address", ""))).lower()
+        if not token:
+            continue
+        closes: list[float] = []
+        if isinstance(entry.get("closes"), list):
+            raw = entry["closes"]
+        elif isinstance(entry.get("prices"), list):
+            raw = entry["prices"]
+        else:
+            raw = []
+        for point in raw:
+            try:
+                if isinstance(point, (int, float)):
+                    closes.append(float(point))
+                elif isinstance(point, dict) and "price" in point:
+                    closes.append(float(point["price"]))
+                elif isinstance(point, (list, tuple)) and len(point) >= 2:
+                    closes.append(float(point[1]))  # [timestamp, price]
+            except (TypeError, ValueError):
+                continue
+        if len(closes) >= 2:
+            out[token] = closes
+    return out
+
+
 def compute_correlation(
     raw_positions: list[dict] | None,
     price_history: list[dict] | None = None,
@@ -57,15 +93,21 @@ def compute_correlation(
             ),
         }
 
-    # Collect return series per token from the warm cache.
+    # Prefer caller-supplied priceHistory (attested input) over the Bybit cache.
+    # This is the primary path in production: the Node backend fetches prices
+    # (it can reach the internet) and passes them to the TEE, which cannot.
+    supplied_closes = _closes_from_price_history(price_history)
+    using_supplied = len(supplied_closes) >= 2
+
+    # Collect return series per token from supplied prices or the warm cache.
     returns_by_token: dict[str, np.ndarray] = {}
     missing: list[str] = []
     for addr in tokens:
-        symbol = bybit.symbol_for_address(addr)
-        if symbol is None:
-            missing.append(addr)
-            continue
-        closes = bybit.get_cached_closes(symbol, days=days)
+        if using_supplied:
+            closes = supplied_closes.get(addr)
+        else:
+            symbol = bybit.symbol_for_address(addr)
+            closes = bybit.get_cached_closes(symbol, days=days) if symbol else None
         if not closes:
             missing.append(addr)
             continue

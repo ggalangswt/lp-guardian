@@ -40,7 +40,7 @@ export interface TeeSignResponse {
   signature: `0x${string}`;
   attestation: string;
   attestationHash: `0x${string}`;
-  provider: "aws-nitro" | "developer-key" | "mock";
+  provider: "phala" | "aws-nitro" | "developer-key" | "mock";
   provenance?: BeDataProvenance;
 }
 
@@ -72,6 +72,9 @@ export class BeDataClient {
   constructor(
     private readonly config: ServerConfig,
     private readonly timeoutMs = 800,
+    // TEE attestation (TDX quote / Nitro doc) routinely takes longer than the
+    // 800ms compute budget, so signing gets its own generous timeout.
+    private readonly teeTimeoutMs = 15_000,
   ) {}
 
   get configured(): boolean {
@@ -105,12 +108,13 @@ export class BeDataClient {
     outputData: unknown;
     reportHash: `0x${string}`;
   }): Promise<BeDataResult<TeeSignResponse>> {
-    return this.post<TeeSignResponse>("/tee/sign", input);
+    return this.post<TeeSignResponse>("/tee/sign", input, this.teeTimeoutMs);
   }
 
   private async post<TData>(
     path: string,
     body: unknown,
+    timeoutMs: number = this.timeoutMs,
   ): Promise<BeDataResult<TData>> {
     const baseUrl = this.config.beDataServiceUrl;
     if (!baseUrl) {
@@ -124,7 +128,7 @@ export class BeDataClient {
     }
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(new URL(path, baseUrl), {

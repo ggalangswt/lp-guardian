@@ -57,8 +57,8 @@ class Settings:
     )
 
     # TEE signing
-    # "auto" detects /dev/nsm (AWS Nitro) and otherwise falls back to developer-key.
-    # Force a provider with "nitro" or "developer-key".
+    # "auto" detects a Phala dstack socket, then AWS Nitro /dev/nsm, otherwise
+    # falls back to developer-key. Force with "phala" | "nitro" | "developer-key".
     tee_provider: str = field(default_factory=lambda: _env("TEE_PROVIDER", "auto"))
     developer_signing_key: str = field(
         default_factory=lambda: _env(

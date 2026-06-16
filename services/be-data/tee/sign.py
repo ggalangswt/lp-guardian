@@ -1,8 +1,15 @@
 """TEE signing dispatcher.
 
 Resolves the active provider and signs the report commitment. Detection is
-``auto`` by default: if ``/dev/nsm`` exists we use AWS Nitro, otherwise we fall
-back to developer-key signing. The provider can be forced via ``TEE_PROVIDER``.
+``auto`` by default, in priority order:
+
+  1. ``phala``         — a dstack guest-agent socket exists (Phala Cloud TDX CVM)
+  2. ``nitro``         — ``/dev/nsm`` exists (AWS Nitro Enclave)
+  3. ``developer-key`` — neither; local/dev HMAC fallback
+
+The provider can be forced via ``TEE_PROVIDER`` (phala | nitro | developer-key).
+Only a real hardware attestation (phala/nitro) is labelled VERIFIED; developer-key
+is always EMULATED so it never masquerades as a TEE.
 """
 
 from __future__ import annotations
@@ -11,58 +18,70 @@ import time
 
 from config import settings
 
-from . import developer_key, nitro
+from . import developer_key, nitro, phala
 from .common import report_commitment  # re-exported for tests
+
+_VERIFIED_PROVIDERS = ("phala", "nitro")
 
 
 def resolve_provider() -> str:
     configured = (settings.tee_provider or "auto").lower()
-    if configured == "nitro":
+    if configured in ("phala", "nitro", "developer-key"):
+        return configured
+    # auto-detect, Phala first (chain-agnostic CVM), then Nitro.
+    if phala.device_present():
+        return "phala"
+    if nitro.device_present():
         return "nitro"
-    if configured == "developer-key":
-        return "developer-key"
-    # auto
-    return "nitro" if nitro.device_present() else "developer-key"
+    return "developer-key"
 
 
 def tee_active() -> bool:
-    return resolve_provider() == "nitro"
+    return resolve_provider() in _VERIFIED_PROVIDERS
+
+
+def _provenance(label: str, source: str, warnings: list[str]) -> dict:
+    return {
+        "label": label,
+        "source": source,
+        "degraded": label != "VERIFIED",
+        "warnings": warnings,
+        "observedAt": int(time.time() * 1000),
+    }
+
+
+def _developer_key_result(input_data, output_data, report_hash, source, warnings) -> dict:
+    result = developer_key.sign(input_data, output_data, report_hash)
+    result["provenance"] = _provenance("EMULATED", source, warnings)
+    return result
 
 
 def sign_report(input_data, output_data, report_hash: str) -> dict:
     provider = resolve_provider()
 
-    if provider == "nitro":
+    if provider in _VERIFIED_PROVIDERS:
+        driver = phala if provider == "phala" else nitro
+        backend = "Phala dstack TDX" if provider == "phala" else "AWS Nitro NSM"
         try:
-            result = nitro.sign(input_data, output_data, report_hash)
-            result["provenance"] = {
-                "label": "VERIFIED",
-                "source": "BE Data /tee/sign (AWS Nitro NSM)",
-                "degraded": False,
-                "warnings": [],
-                "observedAt": int(time.time() * 1000),
-            }
+            result = driver.sign(input_data, output_data, report_hash)
+            result["provenance"] = _provenance("VERIFIED", f"BE Data /tee/sign ({backend})", [])
             return result
-        except Exception as exc:  # noqa: BLE001 - fall back rather than 500
-            fallback = developer_key.sign(input_data, output_data, report_hash)
-            fallback["provenance"] = {
-                "label": "EMULATED",
-                "source": "BE Data /tee/sign (Nitro failed -> developer-key)",
-                "degraded": True,
-                "warnings": [f"Nitro attestation failed: {exc}"],
-                "observedAt": int(time.time() * 1000),
-            }
-            return fallback
+        except Exception as exc:  # noqa: BLE001 - degrade rather than 500
+            return _developer_key_result(
+                input_data,
+                output_data,
+                report_hash,
+                f"BE Data /tee/sign ({backend} failed -> developer-key)",
+                [f"{backend} attestation failed: {exc}"],
+            )
 
-    result = developer_key.sign(input_data, output_data, report_hash)
-    result["provenance"] = {
-        "label": "EMULATED",
-        "source": "BE Data /tee/sign (developer-key)",
-        "degraded": True,
-        "warnings": ["Developer-key signing is not a hardware TEE attestation."],
-        "observedAt": int(time.time() * 1000),
-    }
-    return result
+    return _developer_key_result(
+        input_data,
+        output_data,
+        report_hash,
+        "BE Data /tee/sign (developer-key)",
+        ["Developer-key signing is not a hardware TEE attestation."],
+    )
 
 
 __all__ = ["sign_report", "resolve_provider", "tee_active", "report_commitment"]

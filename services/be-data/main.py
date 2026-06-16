@@ -36,10 +36,12 @@ _background_tasks: set[asyncio.Task] = set()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Pre-warm the Bybit cache so the first compute request is served instantly.
-    await bybit.prewarm()
+    # Pre-warm the Bybit cache in the background so the server accepts connections
+    # immediately — never block startup on (possibly slow/failing) Bybit. The
+    # compute endpoints degrade gracefully until the cache is warm.
+    prewarm_task = asyncio.create_task(bybit.prewarm())
     loop_task = asyncio.create_task(bybit.refresh_loop())
-    _background_tasks.add(loop_task)
+    _background_tasks.update({prewarm_task, loop_task})
     logger.info("BE Data started (tee_provider=%s)", tee_sign.resolve_provider())
     try:
         yield

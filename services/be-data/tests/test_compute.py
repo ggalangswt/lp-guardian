@@ -64,6 +64,33 @@ def test_correlation_matrix_is_square_and_symmetric_diagonal_one():
             assert out["matrix"][a][b] == out["matrix"][b][a]
 
 
+def test_correlation_uses_supplied_price_history_closes():
+    # Caller-supplied priceHistory (closes form) must be used over a cold cache.
+    positions = [_pos("1", WMNT, WETH), _pos("2", WBTC, WETH)]
+    price_history = [
+        {"token": WMNT, "closes": [100, 110, 100, 110, 100, 110, 100]},
+        {"token": WETH, "closes": [100, 110, 100, 110, 100, 110, 100]},  # +1 vs WMNT
+        {"token": WBTC, "closes": [100, 90, 100, 90, 100, 90, 100]},     # -1 vs WMNT
+    ]
+    out = compute_correlation(positions, price_history)
+    assert out["provenance"]["label"] == "COMPUTED"
+    assert out["matrix"][WMNT][WETH] > 0.9
+    assert out["matrix"][WMNT][WBTC] < -0.9
+
+
+def test_correlation_supplied_price_history_prices_form():
+    # The {prices:[{price}]} form (CoinGecko-like) is also accepted.
+    positions = [_pos("1", WMNT, WETH)]
+    positions.append(_pos("2", WBTC, WETH))
+    price_history = [
+        {"token": WMNT, "prices": [{"price": p} for p in [100, 101, 102, 103, 104, 105, 106]]},
+        {"token": WETH, "prices": [{"price": p} for p in [100, 101, 102, 103, 104, 105, 106]]},
+        {"token": WBTC, "prices": [[0, 100], [1, 99], [2, 98], [3, 97], [4, 96], [5, 95], [6, 94]]},
+    ]
+    out = compute_correlation(positions, price_history)
+    assert out["provenance"]["label"] == "COMPUTED"
+
+
 def test_correlation_with_warm_cache_is_computed(monkeypatch):
     # Inject synthetic warm closes so correlation computes without network.
     # Correlation is computed on daily RETURNS, not price levels. Use opposite
@@ -175,6 +202,35 @@ def test_developer_key_sign_is_deterministic():
 
 
 def test_resolve_provider_off_enclave_is_developer_key():
-    # No /dev/nsm in CI/laptop -> developer-key.
+    # No dstack socket and no /dev/nsm in CI/laptop -> developer-key.
     assert tee_sign.resolve_provider() == "developer-key"
     assert tee_sign.tee_active() is False
+
+
+def test_resolve_provider_prefers_phala_when_socket_present(monkeypatch):
+    from tee import phala
+    monkeypatch.setattr(phala, "device_present", lambda: True)
+    assert tee_sign.resolve_provider() == "phala"
+    assert tee_sign.tee_active() is True
+
+
+def test_phala_falls_back_to_developer_key_when_quote_fails(monkeypatch):
+    from tee import phala
+    monkeypatch.setattr(phala, "device_present", lambda: True)
+
+    def boom(*_a, **_k):
+        raise RuntimeError("dstack unreachable")
+
+    monkeypatch.setattr(phala, "sign", boom)
+    out = tee_sign.sign_report({"a": 1}, {"b": 2}, "0xabc")
+    # Degrades gracefully to developer-key with EMULATED label, never raises.
+    assert out["provider"] == "developer-key"
+    assert out["provenance"]["label"] == "EMULATED"
+    assert "Phala dstack TDX attestation failed" in out["provenance"]["warnings"][0]
+
+
+def test_report_data_hex_is_32_bytes():
+    from tee.common import report_data_hex
+    rd = report_data_hex({"a": 1}, {"b": 2}, "0xabc")
+    assert rd.startswith("0x")
+    assert len(rd) == 66  # 0x + 64 hex chars = 32 bytes
