@@ -42,6 +42,8 @@ export interface ServerConfig {
 
   // --- Data sources ---
   beDataServiceUrl: string | null;
+  /** Bearer token sent to the BE Data service when it enforces auth. */
+  beDataAuthToken: string | null;
   merchantMoeSubgraphUrl: string | null;
   theGraphKey: string | null;
   uniswapV3SubgraphId: string | null;
@@ -244,6 +246,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     walletBackendPrivateKey: anchorSignerPk ?? undefined,
 
     beDataServiceUrl: nonEmpty(env.BE_DATA_SERVICE_URL),
+    beDataAuthToken: nonEmpty(env.BE_DATA_AUTH_TOKEN),
     merchantMoeSubgraphUrl: nonEmpty(env.MERCHANT_MOE_SUBGRAPH_URL),
     theGraphKey: nonEmpty(env.THE_GRAPH_KEY),
     uniswapV3SubgraphId: nonEmpty(env.UNISWAP_V3_SUBGRAPH_ID),

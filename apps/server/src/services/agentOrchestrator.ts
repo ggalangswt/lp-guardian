@@ -485,9 +485,28 @@ interface TuringDecisionPreview {
   chainId?: number;
   registry?: Address;
   agentId?: string;
+  decisionId?: string;
   action?: 0 | 1 | 2 | 3;
   scenarioHash?: Hex;
   reportHash?: Hex;
+  error?: string;
+  provenance: {
+    label: "VERIFIED" | "UNAVAILABLE" | "EMULATED";
+    source: string;
+    degraded: boolean;
+    warnings: string[];
+    observedAt: number;
+  };
+}
+
+interface TeeAnchorPreview {
+  status: "skipped" | "anchored" | "failed";
+  txHash?: Hex;
+  chainId?: number;
+  registry?: Address;
+  decisionId?: string;
+  attestationHash?: Hex;
+  provider?: string;
   error?: string;
   provenance: {
     label: "VERIFIED" | "UNAVAILABLE" | "EMULATED";
@@ -903,6 +922,7 @@ class OptimizeAgent extends PortfolioAgent {
         chainId: result.chainId,
         registry: result.registry,
         agentId: this.config.turingAgentId.toString(),
+        decisionId: result.id?.toString(),
         action,
         scenarioHash,
         reportHash,
@@ -930,6 +950,87 @@ class OptimizeAgent extends PortfolioAgent {
           warnings: [
             error instanceof Error ? error.message : String(error),
           ],
+          observedAt: Date.now(),
+        },
+      };
+    }
+  }
+
+  private skippedTeeAnchor(warning: string, degraded: boolean): TeeAnchorPreview {
+    return {
+      status: "skipped",
+      provenance: {
+        label: degraded ? "UNAVAILABLE" : "EMULATED",
+        source: "Mantle Turing Registry recordOutcome (TEE anchor)",
+        degraded,
+        warnings: [warning],
+        observedAt: Date.now(),
+      },
+    };
+  }
+
+  private async maybeAnchorTeeAttestation(
+    context: AgentContext,
+    decision: TuringDecisionPreview,
+    attestationHash: Hex | undefined,
+    provider: string | undefined,
+  ): Promise<TeeAnchorPreview> {
+    if (!attestationHash) {
+      return this.skippedTeeAnchor(
+        "No verified TEE attestation available; nothing to anchor on-chain.",
+        false,
+      );
+    }
+    if (decision.status !== "recorded" || !decision.decisionId) {
+      return this.skippedTeeAnchor(
+        "No recorded Turing decision id to bind the TEE attestation to.",
+        decision.status === "failed",
+      );
+    }
+
+    const riskOutput = context.diagnosis?.report.payload.riskOutput;
+    const scoreBps = riskOutput
+      ? Number(clampBigInt(riskOutput.riskScoreBps, 0n, 10_000n))
+      : 5_000;
+
+    try {
+      const result = await recordTuringOutcome(this.config, {
+        decisionId: BigInt(decision.decisionId),
+        // Forward-looking anchor at decision time: no realized PnL yet.
+        pnlBps: 0n,
+        scoreBps,
+        outcomeHash: attestationHash,
+        metadataURI: `lpguardian://tee-attestation/${provider ?? "unknown"}/${attestationHash}`,
+      });
+
+      return {
+        status: "anchored",
+        txHash: result.txHash,
+        chainId: result.chainId,
+        registry: result.registry,
+        decisionId: decision.decisionId,
+        attestationHash,
+        provider,
+        provenance: {
+          label: "VERIFIED",
+          source: "Mantle Turing Registry recordOutcome (TEE anchor)",
+          degraded: false,
+          warnings: [],
+          observedAt: Date.now(),
+        },
+      };
+    } catch (error) {
+      return {
+        status: "failed",
+        decisionId: decision.decisionId,
+        attestationHash,
+        provider,
+        error: error instanceof Error ? error.message : String(error),
+        provenance: {
+          label: "UNAVAILABLE",
+          source: "Mantle Turing Registry recordOutcome (TEE anchor)",
+          degraded: true,
+          warnings: [error instanceof Error ? error.message : String(error)],
           observedAt: Date.now(),
         },
       };
@@ -985,6 +1086,15 @@ class OptimizeAgent extends PortfolioAgent {
         : undefined;
 
     const turingDecision = await this.maybeRecordTuringDecision(context, proposal);
+    // Anchor the TEE attestation on Mantle as a SIMULATED outcome bound to the
+    // just-recorded decision (outcomeHash = attestation hash). This closes the
+    // on-chain benchmark loop: AI decision -> TEE-attested outcome on Mantle.
+    const teeAnchor = await this.maybeAnchorTeeAttestation(
+      context,
+      turingDecision,
+      teeAttestationHash,
+      beDataTeeSign.data?.provider,
+    );
 
     return {
       externalAgent: externalAgentName(this.type),
@@ -1007,6 +1117,7 @@ class OptimizeAgent extends PortfolioAgent {
         provenance: beDataTeeSign.provenance,
       },
       turingDecision,
+      teeAnchor,
       note:
         beDataOptimization.ok
           ? "OptimizeAgent generated an approval-gated proposal with BE Data optimization output."

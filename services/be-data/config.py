@@ -1,8 +1,8 @@
 """Environment-driven configuration for the BE Data service.
 
 The service is owned by BE Lead (Data). BE Agent (Node.js) consumes it via
-``BE_DATA_SERVICE_URL`` and applies an 800ms client timeout, so anything in the
-request path must stay fast (see ``data/bybit.py`` for the cache strategy).
+``BE_DATA_SERVICE_URL`` and applies an 800ms client timeout, so the compute
+request path stays fast (pure NumPy/SciPy on caller-supplied inputs).
 """
 
 from __future__ import annotations
@@ -42,18 +42,13 @@ class Settings:
     host: str = field(default_factory=lambda: _env("BE_DATA_HOST", "0.0.0.0"))
     port: int = field(default_factory=lambda: _env_int("BE_DATA_PORT", 8000))
 
-    # Bybit data pipeline
-    bybit_api_base: str = field(
-        default_factory=lambda: _env("BYBIT_API_BASE", "https://api.bybit.com")
-    )
-    bybit_api_key: str = field(default_factory=lambda: _env("BYBIT_API_KEY", ""))
-    # How long a cached kline series stays fresh before the background loop refetches.
-    price_cache_ttl_seconds: int = field(
-        default_factory=lambda: _env_int("BE_DATA_PRICE_CACHE_TTL", 3600)
-    )
-    # How often the background refresh loop wakes up.
-    price_refresh_interval_seconds: int = field(
-        default_factory=lambda: _env_int("BE_DATA_PRICE_REFRESH_INTERVAL", 300)
+    # Auth — when set, all POST endpoints require `Authorization: Bearer <token>`.
+    # Leave empty to disable (local dev). /health is always open.
+    auth_token: str = field(default_factory=lambda: _env("BE_DATA_AUTH_TOKEN", ""))
+
+    # Merchant Moe subgraph (optional Python-side position fetch)
+    merchant_moe_subgraph_url: str = field(
+        default_factory=lambda: _env("MERCHANT_MOE_SUBGRAPH_URL", "")
     )
 
     # TEE signing

@@ -9,13 +9,15 @@ Nitro Enclave attestation (in production) or a developer-key emulation (local).
 
 ## Endpoints
 
-| Method | Path                   | Purpose |
-| ------ | ---------------------- | ------- |
-| GET    | `/health`              | Liveness + active TEE provider + cache status |
-| POST   | `/compute/correlation` | Pearson correlation matrix + risk concentration |
-| POST   | `/compute/optimize`    | Risk-parity optimal weights + rebalance actions |
-| POST   | `/compute/simulate`    | HOLD / REBALANCE / CONSOLIDATE_DUST projections |
-| POST   | `/tee/sign`            | Sign report commitment (Nitro or developer-key) |
+| Method | Path                              | Purpose |
+| ------ | --------------------------------- | ------- |
+| GET    | `/health`                         | Liveness + active TEE provider |
+| POST   | `/compute/correlation`            | Pearson correlation matrix + risk concentration |
+| POST   | `/compute/optimize`               | Risk-parity optimal weights + rebalance actions |
+| POST   | `/compute/simulate`               | HOLD / REBALANCE / CONSOLIDATE_DUST projections |
+| POST   | `/tee/sign`                       | Sign report commitment (Phala / Nitro / developer-key) |
+| POST   | `/tee/verify`                     | Verify an attestation binds to given inputs/outputs |
+| GET    | `/positions/merchant-moe/{wallet}`| Optional: fetch LP positions from the Merchant Moe subgraph |
 
 Request/response schemas mirror `apps/server/src/services/beDataClient.ts`.
 Every response carries a `provenance` object (`COMPUTED` / `EMULATED` / …) so the
@@ -23,16 +25,19 @@ honesty labels propagate to the UI.
 
 ## Architecture notes
 
-- **800ms budget.** BE Agent applies an 800ms client timeout. The request path
-  is therefore **cache-first**: prices come from an in-memory cache that a
-  background task pre-warms on startup and refreshes on an interval. Cache misses
-  degrade gracefully (identity correlation + `EMULATED`) instead of blocking.
+- **800ms budget.** BE Agent applies an 800ms client timeout to compute calls,
+  so the request path is pure NumPy/SciPy on caller-supplied inputs (no network).
+- **Prices are attested inputs.** The TEE CVM has no egress, so the Node backend
+  fetches price history (CoinGecko) and passes it in as `priceHistory`; the
+  correlation is still computed inside the enclave. Missing prices degrade to an
+  identity matrix + `EMULATED` (no fabricated signal).
 - **Positions are raw NFPM snapshots** (`token0`/`token1` are addresses, no USD
-  value). `liquidity` is the position-size proxy. `data/bybit.py` maps known
-  Mantle token addresses to Bybit spot symbols.
+  value). `liquidity` is the position-size proxy.
 - **TEE honesty.** Only a real hardware attestation (`phala` TDX or `aws-nitro`)
   marks the orchestrator message `VERIFIED`. Developer-key signing is labelled
-  `EMULATED` and never masquerades as hardware attestation.
+  `EMULATED` and never masquerades as hardware attestation. `/tee/verify` checks
+  the attestation binds to the exact inputs/outputs (structural + report_data
+  binding; full Intel DCAP cert-chain verification is out of scope).
 
 ## TEE provider (auto-detected)
 

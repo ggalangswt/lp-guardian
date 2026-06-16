@@ -1,18 +1,17 @@
 """Correlation matrix engine.
 
-Builds a per-token price-return correlation matrix from Bybit daily closes and
-derives a ``riskConcentration`` score (the strongest off-diagonal correlation).
+Builds a per-token price-return correlation matrix from the caller-supplied
+``priceHistory`` and derives a ``riskConcentration`` score (the strongest
+off-diagonal correlation).
 
-The request path never blocks on the network: prices come from the warm Bybit
-cache. When a token's price series is unavailable (unknown address or cold
-cache) the matrix degrades to an identity-like structure with an EMULATED label.
+Prices are provided by the Node backend (which has egress) as attested inputs —
+the TEE CVM itself cannot reach price APIs. When a token's series is missing the
+matrix degrades to an identity-like structure with an EMULATED label.
 """
 
 from __future__ import annotations
 
 import numpy as np
-
-from data import bybit
 
 from .common import (
     LABEL_COMPUTED,
@@ -75,7 +74,6 @@ def _closes_from_price_history(price_history: list[dict] | None) -> dict[str, li
 def compute_correlation(
     raw_positions: list[dict] | None,
     price_history: list[dict] | None = None,
-    days: int = 7,
 ) -> dict:
     positions: list[Position] = parse_positions(raw_positions)
     tokens = unique_token_addresses(positions)
@@ -93,21 +91,14 @@ def compute_correlation(
             ),
         }
 
-    # Prefer caller-supplied priceHistory (attested input) over the Bybit cache.
-    # This is the primary path in production: the Node backend fetches prices
-    # (it can reach the internet) and passes them to the TEE, which cannot.
+    # Prices come from the caller-supplied priceHistory (attested input). The
+    # Node backend fetches them (it can reach the internet); the TEE cannot.
     supplied_closes = _closes_from_price_history(price_history)
-    using_supplied = len(supplied_closes) >= 2
 
-    # Collect return series per token from supplied prices or the warm cache.
     returns_by_token: dict[str, np.ndarray] = {}
     missing: list[str] = []
     for addr in tokens:
-        if using_supplied:
-            closes = supplied_closes.get(addr)
-        else:
-            symbol = bybit.symbol_for_address(addr)
-            closes = bybit.get_cached_closes(symbol, days=days) if symbol else None
+        closes = supplied_closes.get(addr)
         if not closes:
             missing.append(addr)
             continue
@@ -133,7 +124,7 @@ def compute_correlation(
             "provenance": provenance(
                 LABEL_EMULATED,
                 _SOURCE,
-                warnings + ["Insufficient warm price series to compute correlation."],
+                warnings + ["Insufficient supplied price series to compute correlation."],
             ),
         }
 
