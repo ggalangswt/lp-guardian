@@ -74,6 +74,7 @@ export function createApp(config: ServerConfig, services: AppServices = {}): Hon
   app.route("/api/positions", createPositionsRoute(config));
   app.route("/api/report", createReportRoute(config));
   app.route("/api/portfolio", createPortfolioRoute(config));
+  app.route("/portfolio", createPortfolioRoute(config, agentOrchestrator));
   app.route("/api/turing", createTuringRoute(config));
 
   app.notFound(notFoundHandler);

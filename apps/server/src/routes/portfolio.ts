@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ServerConfig } from "../config.js";
 import { fail, ok } from "../http/responses.js";
 import { portfolioDiagnoseSchema } from "../schemas/portfolio.js";
+import type { AgentOrchestrator } from "../services/agentOrchestrator.js";
 import { PortfolioService } from "../services/portfolio/portfolioService.js";
 import type { NfpmPositionSnapshot } from "../services/robinhood/transferScanner.js";
 import type { V3PositionRaw } from "../indexer/types.js";
@@ -29,6 +30,10 @@ function toJsonSafe(value: unknown): unknown {
   return Object.fromEntries(
     Object.entries(value).map(([key, entry]) => [key, toJsonSafe(entry)]),
   );
+}
+
+function isPublicPortfolioAlias(url: string): boolean {
+  return new URL(url).pathname === "/portfolio/diagnose";
 }
 
 function positionToWire(
@@ -79,7 +84,10 @@ function positionToWire(
   };
 }
 
-export function createPortfolioRoute(config: ServerConfig): Hono {
+export function createPortfolioRoute(
+  config: ServerConfig,
+  agentOrchestrator?: AgentOrchestrator,
+): Hono {
   const route = new Hono();
   const service = new PortfolioService(config);
 
@@ -142,6 +150,44 @@ export function createPortfolioRoute(config: ServerConfig): Hono {
           parsed.error.issues,
         ),
         400,
+      );
+    }
+
+    if (agentOrchestrator && isPublicPortfolioAlias(c.req.url)) {
+      const result = agentOrchestrator.enqueue({
+        walletAddress: parsed.data.walletAddress as Address,
+        tokenId: parsed.data.tokenId,
+        targetAgent: "optimize",
+        publishReport: parsed.data.publishReport,
+        recordTuringDecision: parsed.data.recordTuringDecision,
+        recordTuringOutcome: parsed.data.recordTuringOutcome,
+        turingDecisionId: parsed.data.turingDecisionId,
+        simulatedPnlBps: parsed.data.simulatedPnlBps,
+        simulatedScoreBps: parsed.data.simulatedScoreBps,
+        requirePhala: parsed.data.requirePhala,
+        requireTee: parsed.data.requireTee,
+        phalaAttestationHash: parsed.data.phalaAttestationHash as `0x${string}` | undefined,
+        teeAttestationHash: parsed.data.teeAttestationHash as `0x${string}` | undefined,
+      });
+
+      return c.json(
+        ok({
+          status: "queued",
+          correlationId: result.run.correlationId,
+          streamUrl: `/agent/orchestration/stream/${result.run.correlationId}`,
+          run: result.run,
+          messages: result.messages,
+          provenance: [
+            {
+              label: "COMPUTED",
+              source: "BE Agent orchestration queue",
+              degraded: false,
+              warnings: [],
+              observedAt: Date.now(),
+            },
+          ],
+        }),
+        202,
       );
     }
 
