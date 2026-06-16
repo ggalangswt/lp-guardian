@@ -253,16 +253,16 @@ function riskOutputFromWire(value: unknown): PortfolioRiskResult | undefined {
 
   if (
     riskScoreBps === undefined ||
-    ![0, 1, 2].includes(rawRiskTier) ||
-    ![0, 1, 2].includes(rawRecommendedAction)
+    ![0, 1, 2, 3].includes(rawRiskTier) ||
+    ![0, 1, 2, 3].includes(rawRecommendedAction)
   ) {
     return undefined;
   }
 
   return {
     riskScoreBps,
-    riskTier: rawRiskTier as 0 | 1 | 2,
-    recommendedAction: rawRecommendedAction as 0 | 1 | 2,
+    riskTier: rawRiskTier as 0 | 1 | 2 | 3,
+    recommendedAction: rawRecommendedAction as 0 | 1 | 2 | 3,
   };
 }
 
@@ -511,35 +511,38 @@ function stableStringify(value: unknown): string {
   });
 }
 
-function riskActionName(value: 0 | 1 | 2): "hold" | "rebalance" | "close" {
+function riskActionName(value: 0 | 1 | 2 | 3): "hold" | "rebalance" | "close" {
   switch (value) {
     case 0:
       return "hold";
     case 1:
       return "rebalance";
     case 2:
+    case 3:
       return "close";
   }
 }
 
-function turingActionForRiskAction(value: 0 | 1 | 2): 0 | 2 | 3 {
+function turingActionForRiskAction(value: 0 | 1 | 2 | 3): 0 | 2 | 3 {
   switch (value) {
     case 0:
       return 0;
     case 1:
       return 2;
     case 2:
+    case 3:
       return 3;
   }
 }
 
-function riskTierName(value: 0 | 1 | 2): "green" | "amber" | "red" {
+function riskTierName(value: 0 | 1 | 2 | 3): "green" | "amber" | "red" {
   switch (value) {
     case 0:
       return "green";
     case 1:
       return "amber";
     case 2:
+    case 3:
       return "red";
   }
 }

@@ -2,13 +2,14 @@ import { loadConfig, loadLocalEnv } from "../config.js";
 import { PortfolioService } from "../services/portfolio/portfolioService.js";
 import type { Address } from "viem";
 
-function actionName(value: 0 | 1 | 2): string {
+function actionName(value: 0 | 1 | 2 | 3): string {
   switch (value) {
     case 0:
       return "hold";
     case 1:
       return "rebalance";
     case 2:
+    case 3:
       return "close";
   }
 }
