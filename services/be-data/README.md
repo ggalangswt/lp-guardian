@@ -4,8 +4,9 @@ Portfolio math + TEE signing for LP Guardian. Owned by **BE Lead (Data)**.
 
 Python / FastAPI service that BE Agent (Node.js) calls over HTTP via
 `BE_DATA_SERVICE_URL`. It computes correlation, optimization, and simulation,
-fetches its own price history from Bybit, and signs reports either with an AWS
-Nitro Enclave attestation (in production) or a developer-key emulation (local).
+fetches its own price history from Bybit, and signs report commitments. The
+production TEE target is Phala TDX/CVM; local development and unsupported TEE
+paths use developer-key emulation.
 
 ## Endpoints
 
@@ -15,7 +16,7 @@ Nitro Enclave attestation (in production) or a developer-key emulation (local).
 | POST   | `/compute/correlation` | Pearson correlation matrix + risk concentration |
 | POST   | `/compute/optimize`    | Risk-parity optimal weights + rebalance actions |
 | POST   | `/compute/simulate`    | HOLD / REBALANCE / CONSOLIDATE_DUST projections |
-| POST   | `/tee/sign`            | Sign report commitment (Nitro or developer-key) |
+| POST   | `/tee/sign`            | Sign report commitment (Phala TDX target or developer-key fallback) |
 
 Request/response schemas mirror `apps/server/src/services/beDataClient.ts`.
 Every response carries a `provenance` object (`COMPUTED` / `EMULATED` / …) so the
@@ -30,9 +31,11 @@ honesty labels propagate to the UI.
 - **Positions are raw NFPM snapshots** (`token0`/`token1` are addresses, no USD
   value). `liquidity` is the position-size proxy. `data/bybit.py` maps known
   Mantle token addresses to Bybit spot symbols.
-- **TEE honesty.** Only a real `aws-nitro` attestation marks the orchestrator
-  message `VERIFIED`. Developer-key signing is labelled `EMULATED` and never
-  masquerades as hardware attestation.
+- **TEE honesty.** Only a real hardware TEE attestation with `VERIFIED`
+  provenance may mark the orchestrator message `VERIFIED`. Developer-key signing
+  is labelled `EMULATED` and never masquerades as hardware attestation.
+- **Auth.** If `BE_DATA_AUTH_TOKEN` is set, compute and signing endpoints require
+  `Authorization: Bearer <token>`. Health remains unauthenticated.
 
 ## Local development
 
@@ -52,7 +55,7 @@ curl http://localhost:8000/health
 Point the Node backend at it:
 
 ```bash
-BE_DATA_SERVICE_URL=http://localhost:8000 pnpm dev:server
+BE_DATA_SERVICE_URL=http://localhost:8000 BE_DATA_AUTH_TOKEN=optional-local-token pnpm dev:server
 ```
 
 ## Tests
@@ -67,11 +70,11 @@ BE_DATA_SERVICE_URL=http://localhost:8000 pnpm dev:server
 docker compose up --build
 ```
 
-## AWS Nitro Enclaves (production TEE) — requires your configuration
+## Legacy AWS Nitro Enclaves
 
-The code auto-detects the enclave (`/dev/nsm`) and switches `tee/sign.py` to real
-NSM attestation. Everything below is what **you** run on the EC2 host; no code
-changes are needed.
+This section is legacy-only. The current production TEE decision is Phala
+TDX/CVM through `PHALA_API_URL`; the Nitro tooling below is retained only for
+backward-compatible experiments.
 
 1. **Launch an EC2 instance with Nitro Enclaves enabled** (e.g. `m5.xlarge`),
    `--enclave-options Enabled=true`. Install Docker, `nitro-cli`, and `socat`,
@@ -94,17 +97,18 @@ changes are needed.
    BE_DATA_SERVICE_URL=http://localhost:8000
    ```
 6. Verify `GET /health` now reports `"tee_provider": "nitro"`, `"tee_active": true`.
+   This is not the production Phala path.
 
 ### What needs your input vs. what's done
 
-- **Done (no config):** all compute + signing code, enclave auto-detection,
-  `libnsm`/ioctl attestation path, Dockerfile, `entrypoint.sh`, `build_eif.sh`,
-  `vsock_proxy.sh`, and the developer-key fallback for local dev.
-- **You configure:** the EC2 Nitro instance, allocator, running `build_eif.sh` /
-  `vsock_proxy.sh`, and setting `BE_DATA_SERVICE_URL`. Optionally a `BYBIT_API_KEY`
-  (public API works for the demo).
+- **Done (no config):** compute endpoints, BE Data auth gate, developer-key
+  fallback for local dev, and backward-compatible legacy Nitro code.
+- **You configure:** `BE_DATA_SERVICE_URL`, optional `BE_DATA_AUTH_TOKEN`, optional
+  `BYBIT_API_KEY` (public API works for the demo), and the Phala CVM service
+  behind `PHALA_API_URL`.
 
 ## Configuration
 
-See `.env.example`. Key vars: `BE_DATA_PORT`, `BYBIT_API_BASE`, `BYBIT_API_KEY`,
-`TEE_PROVIDER` (`auto`|`nitro`|`developer-key`), `DEVELOPER_SIGNING_KEY`.
+See `.env.example`. Key vars: `BE_DATA_PORT`, `BE_DATA_AUTH_TOKEN`,
+`BYBIT_API_BASE`, `BYBIT_API_KEY`, `TEE_PROVIDER`
+(`auto`|`phala-tdx`|`developer-key`), `DEVELOPER_SIGNING_KEY`.

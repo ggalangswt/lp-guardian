@@ -278,6 +278,23 @@ function nonZeroHash(value: unknown): Hex | undefined {
   return undefined;
 }
 
+function isVerifiedTeeSign(
+  result: BeDataResult<TeeSignResponse>,
+): result is BeDataResult<TeeSignResponse> & {
+  data: TeeSignResponse & { attestationHash: Hex };
+} {
+  const provider = result.data?.provider;
+  return Boolean(
+    result.ok &&
+      result.provenance.label === "VERIFIED" &&
+      nonZeroHash(result.data?.attestationHash) &&
+      (provider === "phala-tdx" ||
+        provider === "phala" ||
+        // Backward-compatible for older BE Data responses while Phala rollout completes.
+        provider === "aws-nitro"),
+  );
+}
+
 function messageProvenance(
   context: AgentContext,
   agentType: AgentType,
@@ -944,20 +961,17 @@ class OptimizeAgent extends PortfolioAgent {
     context.beDataOptimization = beDataOptimization;
 
     // BE Data TEE signing: bind the report hash + optimization output to a TEE
-    // attestation. When the BE Data service runs inside an AWS Nitro enclave the
-    // attestationHash is a real hardware quote hash; otherwise it is a
-    // developer-key emulation. Including `attestationHash` in the payload makes
-    // messageProvenance() mark this message VERIFIED automatically.
+    // attestation. In production this is expected to be a Phala TDX/CVM quote;
+    // developer-key output remains an EMULATED local fallback.
     const beDataTeeSign = await this.beDataClient.teeSign({
       inputData: scanPositionsForBeData(context.scan),
       outputData: beDataOptimization.data ?? null,
       reportHash: context.diagnosis.report.rootHash,
     });
     context.beDataTeeSign = beDataTeeSign;
-    const teeAttestationHash =
-      beDataTeeSign.ok && beDataTeeSign.data?.provider === "aws-nitro"
-        ? beDataTeeSign.data.attestationHash
-        : undefined;
+    const teeAttestationHash = isVerifiedTeeSign(beDataTeeSign)
+      ? beDataTeeSign.data.attestationHash
+      : undefined;
 
     const turingDecision = await this.maybeRecordTuringDecision(context, proposal);
 

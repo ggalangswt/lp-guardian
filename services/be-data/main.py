@@ -18,7 +18,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from compute.correlation import compute_correlation
@@ -50,6 +50,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="LP Guardian BE Data", version="1.0.0", lifespan=lifespan)
+
+
+def require_auth(authorization: str | None = Header(default=None)) -> None:
+    if not settings.auth_token:
+        return
+    if authorization == f"Bearer {settings.auth_token}":
+        return
+    raise HTTPException(status_code=401, detail="Invalid BE Data bearer token.")
 
 
 # --- Request models ----------------------------------------------------------
@@ -88,22 +96,22 @@ async def health() -> dict:
     }
 
 
-@app.post("/compute/correlation")
+@app.post("/compute/correlation", dependencies=[Depends(require_auth)])
 async def correlation(req: CorrelationRequest) -> dict:
     return compute_correlation(req.positions, req.priceHistory)
 
 
-@app.post("/compute/optimize")
+@app.post("/compute/optimize", dependencies=[Depends(require_auth)])
 async def optimize(req: OptimizeRequest) -> dict:
     return compute_optimize(req.positions, req.correlation, req.constraints)
 
 
-@app.post("/compute/simulate")
+@app.post("/compute/simulate", dependencies=[Depends(require_auth)])
 async def simulate(req: SimulateRequest) -> dict:
     return compute_simulate(req.positions, req.scenarios)
 
 
-@app.post("/tee/sign")
+@app.post("/tee/sign", dependencies=[Depends(require_auth)])
 async def sign(req: TeeSignRequest) -> dict:
     return tee_sign.sign_report(req.inputData, req.outputData, req.reportHash)
 

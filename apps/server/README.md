@@ -112,24 +112,23 @@ Current boundary:
   Eliza runtime path uses the registered `SUMMARIZE_LP_RISK` Eliza action and
   calls Gemini when `GEMINI_API_KEY` is present. Without the key, the same action
   falls back to deterministic local advice and marks `modelBacked: false`.
-- Phala-verified strategist output is the next attested integration step.
+- Phala-verified strategist output is available through `PHALA_API_URL` when the
+  CVM exposes the expected strategist/verdict API.
 
 ## TEE Boundary
 
-The Mantle interface freeze treats AWS Nitro attestation as a BE Data boundary.
-BE Agent will consume `/tee/sign` output when `BE_DATA_SERVICE_URL` is wired.
-Until then, strategist output without a verified TEE attestation must be labeled
+The Mantle interface freeze treats Phala TDX/CVM as the production TEE boundary.
+BE Agent consumes:
+
+- `PHALA_API_URL` for TEE-attested verdict/strategist calls.
+- `BE_DATA_SERVICE_URL` for compute and `/tee/sign` output.
+
+Only responses with a verified Phala/TEE provider and `VERIFIED` provenance may
+mark agent messages as verified. Developer-key and unavailable TEE paths remain
 `EMULATED` or degraded.
 
-`PhalaStrategistAdapter` remains as a legacy placeholder until these are
-finalized or retired:
-
-- agent contract address
-- signer policy
-- attestation verification policy
-- fallback behavior when the provider is unavailable
-
-Until then, strategist output must be labeled `EMULATED`.
+`PhalaStrategistAdapter` posts to `PHALA_API_URL/strategist` and falls back
+through the configured adapter chain when the CVM endpoint is unavailable.
 
 ## Robinhood NFPM Transfer Scan
 

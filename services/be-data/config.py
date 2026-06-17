@@ -57,9 +57,10 @@ class Settings:
     )
 
     # TEE signing
-    # "auto" detects /dev/nsm (AWS Nitro) and otherwise falls back to developer-key.
-    # Force a provider with "nitro" or "developer-key".
+    # "auto" expects Phala TDX/CVM in production and otherwise falls back to
+    # developer-key. Force with "phala-tdx", "phala", or "developer-key".
     tee_provider: str = field(default_factory=lambda: _env("TEE_PROVIDER", "auto"))
+    auth_token: str = field(default_factory=lambda: _env("BE_DATA_AUTH_TOKEN", ""))
     developer_signing_key: str = field(
         default_factory=lambda: _env(
             "DEVELOPER_SIGNING_KEY",
