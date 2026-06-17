@@ -116,7 +116,7 @@ Current boundary:
 
 ## TEE Boundary
 
-The Mantle interface freeze treats AWS Nitro attestation as a BE Data boundary.
+The Mantle interface freeze treats Phala TDX attestation as a BE Data boundary.
 BE Agent will consume `/tee/sign` output when `BE_DATA_SERVICE_URL` is wired.
 Until then, strategist output without a verified TEE attestation must be labeled
 `EMULATED` or degraded.

@@ -40,7 +40,7 @@ export interface TeeSignResponse {
   signature: `0x${string}`;
   attestation: string;
   attestationHash: `0x${string}`;
-  provider: "phala" | "aws-nitro" | "developer-key" | "mock";
+  provider: "phala" | "developer-key" | "mock";
   provenance?: BeDataProvenance;
 }
 
@@ -72,7 +72,7 @@ export class BeDataClient {
   constructor(
     private readonly config: ServerConfig,
     private readonly timeoutMs = 800,
-    // TEE attestation (TDX quote / Nitro doc) routinely takes longer than the
+    // TEE attestation (TDX quote) routinely takes longer than the
     // 800ms compute budget, so signing gets its own generous timeout.
     private readonly teeTimeoutMs = 15_000,
   ) {}

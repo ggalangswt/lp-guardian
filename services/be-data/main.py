@@ -10,7 +10,11 @@ Endpoints (schemas mirror apps/server/src/services/beDataClient.ts):
   POST /compute/simulate
   POST /tee/sign
   POST /tee/verify
-  GET  /positions/merchant-moe/{wallet}
+  POST /prices/bybit                    # Bybit daily-close priceHistory
+  POST /prices/chainlink                # Chainlink on-chain oracle fallback
+  GET  /positions/merchant-moe/{wallet} # must-have, subgraph + RPC fallback
+  GET  /positions/onchain/{wallet}      # NFPM on-chain fallback (Mantle RPC)
+  GET  /positions/{protocol}/{wallet}   # merchant-moe | agni | fluxion
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ from compute.correlation import compute_correlation
 from compute.optimization import compute_optimize
 from compute.simulation import compute_simulate
 from config import settings
-from data import merchant_moe
+from data import bybit, chainlink, mantle_rpc, merchant_moe, subgraphs
 from tee import sign as tee_sign
 from tee.verify import verify_attestation
 
@@ -116,6 +120,15 @@ class TeeVerifyRequest(BaseModel):
     provider: str | None = None
 
 
+class BybitPricesRequest(BaseModel):
+    tokens: list[str] = Field(default_factory=list)
+    days: int = 30
+
+
+class ChainlinkPricesRequest(BaseModel):
+    symbols: list[str] = Field(default_factory=list)
+
+
 # --- Endpoints ---------------------------------------------------------------
 
 @app.get("/health")
@@ -154,9 +167,29 @@ async def verify(req: TeeVerifyRequest) -> dict:
     )
 
 
+@app.post("/prices/bybit", dependencies=[Depends(require_auth)])
+async def prices_bybit(req: BybitPricesRequest) -> dict:
+    return bybit.fetch_price_history(req.tokens, req.days)
+
+
+@app.post("/prices/chainlink", dependencies=[Depends(require_auth)])
+async def prices_chainlink(req: ChainlinkPricesRequest) -> dict:
+    return chainlink.fetch_prices(req.symbols)
+
+
 @app.get("/positions/merchant-moe/{wallet}", dependencies=[Depends(require_auth)])
 async def merchant_moe_positions(wallet: str) -> dict:
     return merchant_moe.fetch_positions(wallet)
+
+
+@app.get("/positions/onchain/{wallet}", dependencies=[Depends(require_auth)])
+async def onchain_positions(wallet: str) -> dict:
+    return mantle_rpc.fetch_positions(wallet)
+
+
+@app.get("/positions/{protocol}/{wallet}", dependencies=[Depends(require_auth)])
+async def protocol_positions(protocol: str, wallet: str) -> dict:
+    return subgraphs.fetch_positions(protocol, wallet)
 
 
 if __name__ == "__main__":

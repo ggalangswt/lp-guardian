@@ -20,5 +20,7 @@ services:
       - BE_DATA_PORT=8000
       - TEE_PROVIDER=auto # -> phala once the socket above is present
       - BYBIT_API_BASE=https://api.bybit.com
-      # - BYBIT_API_KEY=        # optional; set as an encrypted secret
+      # - BYBIT_SYMBOL_MAP={"0x...":"ETHUSDT"}  # token->symbol for /prices/bybit
+      # - MANTLE_RPC_URL=https://rpc.mantle.xyz # on-chain fallback + Chainlink
+      # - CHAINLINK_FEEDS={"ETH/USD":"0x..."}   # set as encrypted secrets
     restart: always

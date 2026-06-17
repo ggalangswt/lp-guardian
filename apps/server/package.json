@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --conditions=development src/index.ts",
     "start": "node dist/index.js",
+    "prebuild": "pnpm --filter @lp-guardian/core build",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "agent:smoke": "tsx src/scripts/smokeElizaRuntime.ts",

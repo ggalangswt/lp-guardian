@@ -4,11 +4,10 @@ Resolves the active provider and signs the report commitment. Detection is
 ``auto`` by default, in priority order:
 
   1. ``phala``         — a dstack guest-agent socket exists (Phala Cloud TDX CVM)
-  2. ``nitro``         — ``/dev/nsm`` exists (AWS Nitro Enclave)
-  3. ``developer-key`` — neither; local/dev HMAC fallback
+  2. ``developer-key`` — no socket; local/dev HMAC fallback
 
-The provider can be forced via ``TEE_PROVIDER`` (phala | nitro | developer-key).
-Only a real hardware attestation (phala/nitro) is labelled VERIFIED; developer-key
+The provider can be forced via ``TEE_PROVIDER`` (phala | developer-key).
+Only a real hardware attestation (phala TDX) is labelled VERIFIED; developer-key
 is always EMULATED so it never masquerades as a TEE.
 """
 
@@ -18,21 +17,19 @@ import time
 
 from config import settings
 
-from . import developer_key, nitro, phala
+from . import developer_key, phala
 from .common import report_commitment  # re-exported for tests
 
-_VERIFIED_PROVIDERS = ("phala", "nitro")
+_VERIFIED_PROVIDERS = ("phala",)
 
 
 def resolve_provider() -> str:
     configured = (settings.tee_provider or "auto").lower()
-    if configured in ("phala", "nitro", "developer-key"):
+    if configured in ("phala", "developer-key"):
         return configured
-    # auto-detect, Phala first (chain-agnostic CVM), then Nitro.
+    # auto-detect the Phala dstack CVM socket, else fall back to developer-key.
     if phala.device_present():
         return "phala"
-    if nitro.device_present():
-        return "nitro"
     return "developer-key"
 
 
@@ -60,8 +57,8 @@ def sign_report(input_data, output_data, report_hash: str) -> dict:
     provider = resolve_provider()
 
     if provider in _VERIFIED_PROVIDERS:
-        driver = phala if provider == "phala" else nitro
-        backend = "Phala dstack TDX" if provider == "phala" else "AWS Nitro NSM"
+        driver = phala
+        backend = "Phala dstack TDX"
         try:
             result = driver.sign(input_data, output_data, report_hash)
             result["provenance"] = _provenance("VERIFIED", f"BE Data /tee/sign ({backend})", [])

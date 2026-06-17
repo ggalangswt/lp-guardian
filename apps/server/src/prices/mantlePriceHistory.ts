@@ -1,10 +1,10 @@
-// Mantle token price-history fetch for the BE Data correlation engine.
+// Mantle token price-history fetch (CoinGecko) — the FALLBACK source.
 //
-// The BE Data service runs inside a TEE CVM that cannot reach price APIs
-// (datacenter IPs are blocked by Bybit's edge). So the backend — which has
-// normal egress — fetches daily close series here and passes them to the CVM as
-// attested inputs. The correlation COMPUTE still happens inside the TEE; the
-// prices are transparent, independently verifiable public market data.
+// Bybit is the primary daily-close source (see bybitPriceHistory.ts); this
+// CoinGecko path covers tokens Bybit can't resolve, via priceHistory.ts. Both
+// run on the backend (normal egress) and feed the TEE CVM as attested inputs —
+// the CVM cannot reach price APIs itself. The correlation COMPUTE still happens
+// inside the TEE; the prices are transparent, verifiable public market data.
 //
 // Source: CoinGecko market_chart by contract address on the "mantle" platform.
 // Degrades gracefully: a token whose history can't be fetched is omitted, so the

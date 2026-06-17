@@ -7,13 +7,41 @@ request path stays fast (pure NumPy/SciPy on caller-supplied inputs).
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 from dataclasses import dataclass, field
+
+logger = logging.getLogger("be-data.config")
 
 
 def _env(name: str, default: str = "") -> str:
     value = os.environ.get(name)
     return value if value is not None and value != "" else default
+
+
+def _env_json_map(name: str, lower_keys: bool = False, upper_keys: bool = False) -> dict[str, str]:
+    """Parse a JSON object env var into a ``{str: str}`` map (empty on error)."""
+    raw = os.environ.get(name)
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except (ValueError, TypeError):
+        logger.warning("Ignoring %s: not valid JSON.", name)
+        return {}
+    if not isinstance(parsed, dict):
+        logger.warning("Ignoring %s: expected a JSON object.", name)
+        return {}
+    out: dict[str, str] = {}
+    for k, v in parsed.items():
+        key = str(k)
+        if lower_keys:
+            key = key.lower()
+        elif upper_keys:
+            key = key.upper()
+        out[key] = str(v)
+    return out
 
 
 def _env_int(name: str, default: int) -> int:
@@ -46,14 +74,36 @@ class Settings:
     # Leave empty to disable (local dev). /health is always open.
     auth_token: str = field(default_factory=lambda: _env("BE_DATA_AUTH_TOKEN", ""))
 
-    # Merchant Moe subgraph (optional Python-side position fetch)
+    # Protocol subgraphs (optional Python-side position fetch / cross-check).
+    # Merchant Moe is the Mantle-first must-have; Agni/Fluxion are nice-to-have.
     merchant_moe_subgraph_url: str = field(
         default_factory=lambda: _env("MERCHANT_MOE_SUBGRAPH_URL", "")
     )
+    agni_subgraph_url: str = field(default_factory=lambda: _env("AGNI_SUBGRAPH_URL", ""))
+    fluxion_subgraph_url: str = field(default_factory=lambda: _env("FLUXION_SUBGRAPH_URL", ""))
+
+    # Mantle RPC + Uniswap-V3-style NonfungiblePositionManager for the on-chain
+    # position fallback (data/mantle_rpc.py) and Chainlink reads (data/chainlink.py).
+    mantle_rpc_url: str = field(default_factory=lambda: _env("MANTLE_RPC_URL", ""))
+    nfpm_address: str = field(default_factory=lambda: _env("NFPM_ADDRESS", ""))
+
+    # Bybit market data (data/bybit.py). No API key needed for public klines.
+    # BYBIT_SYMBOL_MAP is a JSON map of lowercased token address -> Bybit symbol.
+    bybit_api_base: str = field(
+        default_factory=lambda: _env("BYBIT_API_BASE", "https://api.bybit.com")
+    )
+    bybit_symbol_map: dict[str, str] = field(
+        default_factory=lambda: _env_json_map("BYBIT_SYMBOL_MAP", lower_keys=True)
+    )
+
+    # Chainlink price feeds (data/chainlink.py). JSON map of SYMBOL -> feed address.
+    chainlink_feeds: dict[str, str] = field(
+        default_factory=lambda: _env_json_map("CHAINLINK_FEEDS", upper_keys=True)
+    )
 
     # TEE signing
-    # "auto" detects a Phala dstack socket, then AWS Nitro /dev/nsm, otherwise
-    # falls back to developer-key. Force with "phala" | "nitro" | "developer-key".
+    # "auto" detects a Phala dstack socket, otherwise falls back to
+    # developer-key. Force with "phala" | "developer-key".
     tee_provider: str = field(default_factory=lambda: _env("TEE_PROVIDER", "auto"))
     developer_signing_key: str = field(
         default_factory=lambda: _env(

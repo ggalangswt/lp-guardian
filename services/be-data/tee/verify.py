@@ -4,16 +4,15 @@ The crucial property to verify is **binding**: that the attestation commits to
 exactly the inputs/outputs it claims. We recompute the 32-byte commitment and
 check it is embedded in the attestation:
 
-  * phala / nitro: the commitment is placed in the quote/doc ``report_data``
-    (Phala) or ``user_data`` (Nitro). We confirm the commitment bytes appear in
-    the decoded attestation (layout-independent), so the quote provably commits
-    to our data.
+  * phala: the commitment is placed in the TDX quote ``report_data``. We confirm
+    the commitment bytes appear in the decoded attestation (layout-independent),
+    so the quote provably commits to our data.
   * developer-key: the attestation is a JSON envelope with an HMAC signature; we
     recompute the HMAC and compare.
 
-Scope note: full Intel DCAP / Nitro PKI signature-chain verification (proving the
-quote was issued by genuine Intel/AWS hardware) requires a DCAP QVL / PCCS or a
-hosted verifier (e.g. Phala's quote-verification service). That cryptographic
+Scope note: full Intel DCAP signature-chain verification (proving the quote was
+issued by genuine Intel TDX hardware) requires a DCAP QVL / PCCS or a hosted
+verifier (e.g. Phala's quote-verification service). That cryptographic
 step is intentionally out of scope here; this module verifies the binding and
 structural integrity, which is what the backend needs before trusting a quote.
 """
@@ -34,7 +33,7 @@ from .common import report_commitment
 def _decode_candidates(attestation: str) -> list[bytes]:
     """Return plausible raw-byte interpretations of the attestation string."""
     candidates: list[bytes] = []
-    # 1) base64 (how phala/nitro drivers encode the quote/doc)
+    # 1) base64 (how the phala driver encodes the TDX quote)
     try:
         candidates.append(base64.b64decode(attestation, validate=False))
     except (binascii.Error, ValueError):
@@ -68,7 +67,7 @@ def _verify_hardware(attestation: str, commitment: bytes) -> dict:
         if bound
         else ["Commitment not found in attestation; quote does not bind to these inputs."],
         "notes": [
-            "Binding + structural check only; Intel DCAP / Nitro PKI signature-chain "
+            "Binding + structural check only; Intel DCAP signature-chain "
             "verification is out of scope (use a DCAP QVL or Phala's hosted verifier).",
         ],
     }
@@ -112,7 +111,7 @@ def verify_attestation(
     if provider == "developer-key":
         result = _verify_developer_key(attestation, input_data, output_data, report_hash)
     else:
-        # phala / nitro / unknown -> treat as a hardware quote/doc and check binding.
+        # phala / unknown -> treat as a hardware TDX quote and check binding.
         result = _verify_hardware(attestation, commitment)
 
     result["provider"] = provider

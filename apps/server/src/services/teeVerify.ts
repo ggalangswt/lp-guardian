@@ -2,11 +2,11 @@
 // exact inputs/outputs we sent — WITHOUT trusting the CVM. We recompute the
 // 32-byte commitment with the same canonical serializer as the Python service
 // (`services/be-data/tee/common.py`) and confirm those bytes are embedded in the
-// decoded attestation (the quote/doc's report_data / user_data).
+// decoded attestation (the TDX quote's report_data).
 //
 // This is defense-in-depth: a compromised or swapped CVM cannot make a quote
-// claim our data unless the quote actually commits to it. Full Intel DCAP /
-// Nitro PKI signature-chain verification (proving genuine hardware) is separate
+// claim our data unless the quote actually commits to it. Full Intel DCAP
+// signature-chain verification (proving genuine TDX hardware) is separate
 // and out of scope here.
 
 import { createHash } from "node:crypto";

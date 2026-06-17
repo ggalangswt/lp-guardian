@@ -254,7 +254,7 @@ def test_developer_key_sign_is_deterministic():
 
 
 def test_resolve_provider_off_enclave_is_developer_key():
-    # No dstack socket and no /dev/nsm in CI/laptop -> developer-key.
+    # No dstack socket in CI/laptop -> developer-key.
     assert tee_sign.resolve_provider() == "developer-key"
     assert tee_sign.tee_active() is False
 
@@ -341,19 +341,20 @@ def test_verify_hardware_binding_fails_for_wrong_commitment():
     assert res["verified"] is False
 
 
-# --- merchant moe -------------------------------------------------------------
+# --- merchant moe / subgraphs -------------------------------------------------
 
 def test_merchant_moe_unconfigured_is_unavailable(monkeypatch):
-    from data import merchant_moe
+    from data import merchant_moe, subgraphs
     from config import Settings
-    monkeypatch.setattr(merchant_moe, "settings", Settings(merchant_moe_subgraph_url=""))
+    # Merchant Moe is subgraph-only (LB has no V3 NFPM) -> degrades, no network.
+    monkeypatch.setattr(subgraphs, "settings", Settings(merchant_moe_subgraph_url=""))
     out = merchant_moe.fetch_positions("0xabc")
     assert out["positions"] == []
     assert out["provenance"]["label"] == "UNAVAILABLE"
 
 
 def test_merchant_moe_maps_position_row():
-    from data.merchant_moe import _map_position
+    from data.subgraphs import _map_position
     row = {
         "id": "42",
         "owner": "0xABC",
@@ -373,7 +374,7 @@ def test_merchant_moe_maps_position_row():
 
 
 def test_merchant_moe_skips_row_without_tokens():
-    from data.merchant_moe import _map_position
+    from data.subgraphs import _map_position
     assert _map_position({"id": "1", "liquidity": "5"}, 0) is None
 
 

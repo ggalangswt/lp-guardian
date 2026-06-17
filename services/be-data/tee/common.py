@@ -44,9 +44,9 @@ def _canon(value: Any) -> str:
 def report_commitment(input_data: Any, output_data: Any, report_hash: str) -> bytes:
     """Deterministic 32-byte commitment binding inputs+outputs+reportHash.
 
-    This becomes the ``user_data`` (Nitro) or ``report_data`` (Phala/TDX) placed
-    inside the attestation document, so the quote cryptographically proves *this*
-    code produced *this* output.
+    This becomes the ``report_data`` (Phala/TDX) placed inside the attestation
+    quote, so the quote cryptographically proves *this* code produced *this*
+    output.
     """
     payload = _canon(
         {

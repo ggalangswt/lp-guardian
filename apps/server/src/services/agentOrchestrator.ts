@@ -35,7 +35,7 @@ import {
   type SimulateResponse,
   type TeeSignResponse,
 } from "./beDataClient.js";
-import { fetchMantlePriceHistory } from "../prices/mantlePriceHistory.js";
+import { fetchPriceHistory } from "../prices/priceHistory.js";
 import { verifyTeeBinding } from "./teeVerify.js";
 import { recordTuringDecision, recordTuringOutcome } from "../chain/turingRegistry.js";
 
@@ -548,7 +548,7 @@ async function ensurePriceHistory(
   if (context.priceHistory) return context.priceHistory;
   const tokens = uniqueTokenAddressesFromScan(context.scan);
   const priceHistory = tokens.length
-    ? await fetchMantlePriceHistory(config, tokens).catch(() => [])
+    ? await fetchPriceHistory(config, tokens).catch(() => [])
     : [];
   context.priceHistory = priceHistory;
   return priceHistory;
@@ -1086,7 +1086,7 @@ class OptimizeAgent extends PortfolioAgent {
     context.beDataOptimization = beDataOptimization;
 
     // BE Data TEE signing: bind the report hash + optimization output to a TEE
-    // attestation. When the BE Data service runs inside an AWS Nitro enclave the
+    // attestation. When the BE Data service runs inside a Phala TDX CVM the
     // attestationHash is a real hardware quote hash; otherwise it is a
     // developer-key emulation. Including `attestationHash` in the payload makes
     // messageProvenance() mark this message VERIFIED automatically.
@@ -1109,12 +1109,10 @@ class OptimizeAgent extends PortfolioAgent {
       teeReportHash,
     );
 
-    // A message is VERIFIED only if the provider is real hardware (Phala TDX or
-    // AWS Nitro) AND the locally-verified binding holds. developer-key / mock or
-    // a binding mismatch stays EMULATED.
-    const verifiedTeeProvider =
-      beDataTeeSign.data?.provider === "phala" ||
-      beDataTeeSign.data?.provider === "aws-nitro";
+    // A message is VERIFIED only if the provider is real hardware (Phala TDX)
+    // AND the locally-verified binding holds. developer-key / mock or a binding
+    // mismatch stays EMULATED.
+    const verifiedTeeProvider = beDataTeeSign.data?.provider === "phala";
     const teeAttestationHash =
       beDataTeeSign.ok && verifiedTeeProvider && teeBinding.verified
         ? beDataTeeSign.data?.attestationHash
