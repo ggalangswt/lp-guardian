@@ -1,4 +1,4 @@
-"""Developer-key signing — local/dev fallback when no Nitro enclave is present.
+"""Developer-key signing — local/dev fallback when no Phala TDX CVM is present.
 
 Produces an HMAC-SHA256 signature over the report commitment plus a small JSON
 attestation envelope. This is NOT a hardware attestation; the response is

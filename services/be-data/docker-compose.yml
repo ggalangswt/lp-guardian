@@ -1,5 +1,5 @@
-# Local development convenience. For AWS Nitro, use build_eif.sh instead — an
-# enclave is not a normal container and cannot be run via docker-compose.
+# Local development convenience. For the attested deployment, see
+# docker-compose.phala.yml (Phala Cloud Intel TDX CVM).
 services:
   be-data:
     build: .
@@ -7,8 +7,9 @@ services:
       - "8000:8000"
     environment:
       - BE_DATA_PORT=8000
-      - TEE_PROVIDER=auto # -> developer-key off-enclave
+      - TEE_PROVIDER=auto # -> developer-key locally (no dstack socket)
       - BYBIT_API_BASE=https://api.bybit.com
-      # - BYBIT_API_KEY=
+      # - BYBIT_SYMBOL_MAP={"0x...":"ETHUSDT"}
+      # - MANTLE_RPC_URL=https://rpc.mantle.xyz
       # - DEVELOPER_SIGNING_KEY=
     restart: unless-stopped

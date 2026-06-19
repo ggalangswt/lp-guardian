@@ -363,7 +363,7 @@ interface TeeSignResponse {
   signature: `0x${string}`;
   attestation: string;
   attestationHash: `0x${string}`;
-  provider: "aws-nitro" | "developer-key" | "mock";
+  provider: "phala" | "developer-key" | "mock";
   provenance: Provenance;
 }
 ```

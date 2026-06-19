@@ -35,6 +35,8 @@ import {
   type SimulateResponse,
   type TeeSignResponse,
 } from "./beDataClient.js";
+import { fetchPriceHistory } from "../prices/priceHistory.js";
+import { verifyTeeBinding } from "./teeVerify.js";
 import { recordTuringDecision, recordTuringOutcome } from "../chain/turingRegistry.js";
 
 export type FoundationRunMode = "mock" | "eliza";
@@ -124,6 +126,8 @@ interface AgentContext {
   beDataSimulation?: BeDataResult<SimulateResponse>;
   beDataOptimization?: BeDataResult<OptimizeResponse>;
   beDataTeeSign?: BeDataResult<TeeSignResponse>;
+  /** Mantle token close series fetched once and reused across correlate/simulate/optimize. */
+  priceHistory?: unknown[];
 }
 
 interface AgentMessageProvenance {
@@ -501,6 +505,7 @@ interface TuringDecisionPreview {
   chainId?: number;
   registry?: Address;
   agentId?: string;
+  decisionId?: string;
   action?: 0 | 1 | 2 | 3;
   scenarioHash?: Hex;
   reportHash?: Hex;
@@ -514,9 +519,56 @@ interface TuringDecisionPreview {
   };
 }
 
+interface TeeAnchorPreview {
+  status: "skipped" | "anchored" | "failed";
+  txHash?: Hex;
+  chainId?: number;
+  registry?: Address;
+  decisionId?: string;
+  attestationHash?: Hex;
+  provider?: string;
+  error?: string;
+  provenance: {
+    label: "VERIFIED" | "UNAVAILABLE" | "EMULATED";
+    source: string;
+    degraded: boolean;
+    warnings: string[];
+    observedAt: number;
+  };
+}
+
 function scanPositionsForBeData(scan?: WalletRiskInputResult): unknown[] {
   const positions = normalizeForWire(scan?.scan.positions ?? []);
   return Array.isArray(positions) ? positions : [];
+}
+
+/** Unique lowercased token0/token1 addresses across a scan's positions. */
+function uniqueTokenAddressesFromScan(scan?: WalletRiskInputResult): string[] {
+  const seen = new Set<string>();
+  for (const pos of scan?.scan.positions ?? []) {
+    for (const addr of [pos.token0, pos.token1]) {
+      if (addr) seen.add(addr.toLowerCase());
+    }
+  }
+  return [...seen];
+}
+
+/**
+ * Fetch Mantle token price history once per run and cache it on the context, so
+ * correlate / simulate / optimize all reuse the same attested `priceHistory`
+ * inputs (the TEE CVM cannot fetch prices itself).
+ */
+async function ensurePriceHistory(
+  config: ServerConfig,
+  context: AgentContext,
+): Promise<unknown[]> {
+  if (context.priceHistory) return context.priceHistory;
+  const tokens = uniqueTokenAddressesFromScan(context.scan);
+  const priceHistory = tokens.length
+    ? await fetchPriceHistory(config, tokens).catch(() => [])
+    : [];
+  context.priceHistory = priceHistory;
+  return priceHistory;
 }
 
 function stableStringify(value: unknown): string {
@@ -729,7 +781,10 @@ class ScanAgent extends PortfolioAgent {
 }
 
 class CorrelateAgent extends PortfolioAgent {
-  constructor(private readonly beDataClient: BeDataClient) {
+  constructor(
+    private readonly config: ServerConfig,
+    private readonly beDataClient: BeDataClient,
+  ) {
     super("correlate");
   }
 
@@ -738,9 +793,14 @@ class CorrelateAgent extends PortfolioAgent {
       throw new Error("CorrelateAgent requires ScanAgent output.");
     }
 
+    // The TEE CVM cannot reach price APIs, so we fetch close series here (the
+    // backend has egress) and pass them in as attested inputs; correlation is
+    // still computed inside the enclave. Cached on context for simulate/optimize.
+    const priceHistory = await ensurePriceHistory(this.config, context);
+
     const beDataCorrelation = await this.beDataClient.computeCorrelation({
       positions: scanPositionsForBeData(context.scan),
-      priceHistory: [],
+      priceHistory,
     });
     context.beDataCorrelation = beDataCorrelation;
 
@@ -773,6 +833,7 @@ function confidenceForTuringDecision(
 
 class SimulateAgent extends PortfolioAgent {
   constructor(
+    private readonly config: ServerConfig,
     private readonly portfolioService: PortfolioService,
     private readonly beDataClient: BeDataClient,
   ) {
@@ -783,6 +844,7 @@ class SimulateAgent extends PortfolioAgent {
     const beDataSimulation = await this.beDataClient.computeSimulate({
       positions: scanPositionsForBeData(context.scan),
       scenarios: [context.input.scenario ?? "baseline"],
+      priceHistory: await ensurePriceHistory(this.config, context),
     });
     context.beDataSimulation = beDataSimulation;
 
@@ -900,6 +962,7 @@ class OptimizeAgent extends PortfolioAgent {
         chainId: result.chainId,
         registry: result.registry,
         agentId: this.config.turingAgentId.toString(),
+        decisionId: result.id?.toString(),
         action,
         scenarioHash,
         reportHash,
@@ -933,6 +996,87 @@ class OptimizeAgent extends PortfolioAgent {
     }
   }
 
+  private skippedTeeAnchor(warning: string, degraded: boolean): TeeAnchorPreview {
+    return {
+      status: "skipped",
+      provenance: {
+        label: degraded ? "UNAVAILABLE" : "EMULATED",
+        source: "Mantle Turing Registry recordOutcome (TEE anchor)",
+        degraded,
+        warnings: [warning],
+        observedAt: Date.now(),
+      },
+    };
+  }
+
+  private async maybeAnchorTeeAttestation(
+    context: AgentContext,
+    decision: TuringDecisionPreview,
+    attestationHash: Hex | undefined,
+    provider: string | undefined,
+  ): Promise<TeeAnchorPreview> {
+    if (!attestationHash) {
+      return this.skippedTeeAnchor(
+        "No verified TEE attestation available; nothing to anchor on-chain.",
+        false,
+      );
+    }
+    if (decision.status !== "recorded" || !decision.decisionId) {
+      return this.skippedTeeAnchor(
+        "No recorded Turing decision id to bind the TEE attestation to.",
+        decision.status === "failed",
+      );
+    }
+
+    const riskOutput = context.diagnosis?.report.payload.riskOutput;
+    const scoreBps = riskOutput
+      ? Number(clampBigInt(riskOutput.riskScoreBps, 0n, 10_000n))
+      : 5_000;
+
+    try {
+      const result = await recordTuringOutcome(this.config, {
+        decisionId: BigInt(decision.decisionId),
+        // Forward-looking anchor at decision time: no realized PnL yet.
+        pnlBps: 0n,
+        scoreBps,
+        outcomeHash: attestationHash,
+        metadataURI: `lpguardian://tee-attestation/${provider ?? "unknown"}/${attestationHash}`,
+      });
+
+      return {
+        status: "anchored",
+        txHash: result.txHash,
+        chainId: result.chainId,
+        registry: result.registry,
+        decisionId: decision.decisionId,
+        attestationHash,
+        provider,
+        provenance: {
+          label: "VERIFIED",
+          source: "Mantle Turing Registry recordOutcome (TEE anchor)",
+          degraded: false,
+          warnings: [],
+          observedAt: Date.now(),
+        },
+      };
+    } catch (error) {
+      return {
+        status: "failed",
+        decisionId: decision.decisionId,
+        attestationHash,
+        provider,
+        error: error instanceof Error ? error.message : String(error),
+        provenance: {
+          label: "UNAVAILABLE",
+          source: "Mantle Turing Registry recordOutcome (TEE anchor)",
+          degraded: true,
+          warnings: [error instanceof Error ? error.message : String(error)],
+          observedAt: Date.now(),
+        },
+      };
+    }
+  }
+
   async run(context: AgentContext): Promise<unknown> {
     if (!context.diagnosis) {
       throw new Error("OptimizeAgent requires SimulateAgent output.");
@@ -957,23 +1101,53 @@ class OptimizeAgent extends PortfolioAgent {
         userApproved: Boolean(context.input.userApproved),
         proposalHash: proposal.proposalHash,
       },
+      priceHistory: await ensurePriceHistory(this.config, context),
     });
     context.beDataOptimization = beDataOptimization;
 
     // BE Data TEE signing: bind the report hash + optimization output to a TEE
-    // attestation. In production this is expected to be a Phala TDX/CVM quote;
-    // developer-key output remains an EMULATED local fallback.
+    // attestation. When the BE Data service runs inside a Phala TDX CVM the
+    // attestationHash is a real hardware quote hash; otherwise it is a
+    // developer-key emulation. Including `attestationHash` in the payload makes
+    // messageProvenance() mark this message VERIFIED automatically.
+    const teeInput = scanPositionsForBeData(context.scan);
+    const teeOutput = beDataOptimization.data ?? null;
+    const teeReportHash = context.diagnosis.report.rootHash;
     const beDataTeeSign = await this.beDataClient.teeSign({
-      inputData: scanPositionsForBeData(context.scan),
-      outputData: beDataOptimization.data ?? null,
-      reportHash: context.diagnosis.report.rootHash,
+      inputData: teeInput,
+      outputData: teeOutput,
+      reportHash: teeReportHash,
     });
     context.beDataTeeSign = beDataTeeSign;
-    const teeAttestationHash = isVerifiedTeeSign(beDataTeeSign)
-      ? beDataTeeSign.data.attestationHash
-      : undefined;
+
+    // Independently verify (in this process, NOT trusting the CVM) that the
+    // attestation's report_data binds to exactly the inputs/outputs we sent.
+    const teeBinding = verifyTeeBinding(
+      beDataTeeSign.data?.attestation,
+      teeInput,
+      teeOutput,
+      teeReportHash,
+    );
+
+    // A message is VERIFIED only if the provider is real hardware (Phala TDX)
+    // AND the locally-verified binding holds. developer-key / mock or a binding
+    // mismatch stays EMULATED.
+    const verifiedTeeProvider = beDataTeeSign.data?.provider === "phala";
+    const teeAttestationHash =
+      beDataTeeSign.ok && verifiedTeeProvider && teeBinding.verified
+        ? beDataTeeSign.data?.attestationHash
+        : undefined;
 
     const turingDecision = await this.maybeRecordTuringDecision(context, proposal);
+    // Anchor the TEE attestation on Mantle as a SIMULATED outcome bound to the
+    // just-recorded decision (outcomeHash = attestation hash). This closes the
+    // on-chain benchmark loop: AI decision -> TEE-attested outcome on Mantle.
+    const teeAnchor = await this.maybeAnchorTeeAttestation(
+      context,
+      turingDecision,
+      teeAttestationHash,
+      beDataTeeSign.data?.provider,
+    );
 
     return {
       externalAgent: externalAgentName(this.type),
@@ -995,7 +1169,13 @@ class OptimizeAgent extends PortfolioAgent {
         data: beDataTeeSign.data,
         provenance: beDataTeeSign.provenance,
       },
+      teeBinding: {
+        verified: teeBinding.verified,
+        commitment: teeBinding.commitment,
+        warnings: teeBinding.warnings,
+      },
       turingDecision,
+      teeAnchor,
       note:
         beDataOptimization.ok
           ? "OptimizeAgent generated an approval-gated proposal with BE Data optimization output."
@@ -1157,8 +1337,8 @@ export class AgentOrchestrator {
     this.beDataClient = new BeDataClient(config);
     this.agents = {
       scan: new ScanAgent(this.portfolioService),
-      correlate: new CorrelateAgent(this.beDataClient),
-      simulate: new SimulateAgent(this.portfolioService, this.beDataClient),
+      correlate: new CorrelateAgent(config, this.beDataClient),
+      simulate: new SimulateAgent(config, this.portfolioService, this.beDataClient),
       optimize: new OptimizeAgent(config, this.beDataClient),
       execute: new ExecuteAgent(),
       monitor: new MonitorAgent(config, monitorService),

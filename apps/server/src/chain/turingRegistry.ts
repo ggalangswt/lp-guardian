@@ -7,6 +7,8 @@ export interface TuringWriteResult {
   txHash: Hex;
   chainId: number;
   registry: Address;
+  /** On-chain id returned by the contract (agentId for register, decisionId for recordDecision). */
+  id?: bigint;
 }
 
 export interface RegisterAgentInput {
@@ -95,7 +97,10 @@ export async function recordTuringDecision(
     input.metadataURI,
   ] as const;
 
-  await mantle.simulateContract({
+  // recordDecision returns the new decisionId; simulateContract surfaces it as
+  // `result`, so we can chain an outcome (e.g. the TEE attestation anchor)
+  // without parsing event logs.
+  const { result } = await mantle.simulateContract({
     account: mantleAccount,
     address: config.turingRegistryAddress,
     abi: lpGuardianTuringRegistryAbi,
@@ -112,7 +117,12 @@ export async function recordTuringDecision(
     args,
   });
 
-  return { txHash, chainId: config.mantleChainId, registry: config.turingRegistryAddress };
+  return {
+    txHash,
+    chainId: config.mantleChainId,
+    registry: config.turingRegistryAddress,
+    id: typeof result === "bigint" ? result : undefined,
+  };
 }
 
 export async function recordTuringOutcome(

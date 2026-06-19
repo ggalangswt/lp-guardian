@@ -72,6 +72,9 @@ export class BeDataClient {
   constructor(
     private readonly config: ServerConfig,
     private readonly timeoutMs = 800,
+    // TEE attestation (TDX quote) routinely takes longer than the
+    // 800ms compute budget, so signing gets its own generous timeout.
+    private readonly teeTimeoutMs = 15_000,
   ) {}
 
   get configured(): boolean {
@@ -89,6 +92,7 @@ export class BeDataClient {
     positions: unknown[];
     correlation: unknown;
     constraints: unknown;
+    priceHistory?: unknown[];
   }): Promise<BeDataResult<OptimizeResponse>> {
     return this.post<OptimizeResponse>("/compute/optimize", input);
   }
@@ -96,6 +100,7 @@ export class BeDataClient {
   async computeSimulate(input: {
     positions: unknown[];
     scenarios: string[];
+    priceHistory?: unknown[];
   }): Promise<BeDataResult<SimulateResponse>> {
     return this.post<SimulateResponse>("/compute/simulate", input);
   }
@@ -105,12 +110,13 @@ export class BeDataClient {
     outputData: unknown;
     reportHash: `0x${string}`;
   }): Promise<BeDataResult<TeeSignResponse>> {
-    return this.post<TeeSignResponse>("/tee/sign", input);
+    return this.post<TeeSignResponse>("/tee/sign", input, this.teeTimeoutMs);
   }
 
   private async post<TData>(
     path: string,
     body: unknown,
+    timeoutMs: number = this.timeoutMs,
   ): Promise<BeDataResult<TData>> {
     const baseUrl = this.config.beDataServiceUrl;
     if (!baseUrl) {
@@ -124,7 +130,7 @@ export class BeDataClient {
     }
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const headers: Record<string, string> = {

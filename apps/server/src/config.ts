@@ -42,6 +42,7 @@ export interface ServerConfig {
 
   // --- Data sources ---
   beDataServiceUrl: string | null;
+  /** Bearer token sent to the BE Data service when it enforces auth. */
   beDataAuthToken: string | null;
   merchantMoeSubgraphUrl: string | null;
   theGraphKey: string | null;
@@ -49,6 +50,10 @@ export interface ServerConfig {
   uniswapV4SubgraphId: string | null;
   camelotSubgraphId: string | null;
   coinGeckoApiKey: string | null;
+  /** Bybit public market-data base URL (no API key needed for klines). */
+  bybitApiBase: string;
+  /** Lowercased token address -> Bybit spot symbol, e.g. {"0x..":"ETHUSDT"}. */
+  bybitSymbolMap: Record<string, string>;
 
   // --- ElizaOS model provider ---
   geminiApiKey: string | null;
@@ -121,6 +126,24 @@ function nonEmpty(value: string | undefined): string | null {
   if (value === undefined) return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+/** Parse a JSON object env var into a lowercased-key string map (empty on error). */
+function jsonStringMap(value: string | undefined, lowerKeys = false): Record<string, string> {
+  const raw = nonEmpty(value);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      out[lowerKeys ? k.toLowerCase() : k] = String(v);
+    }
+    return out;
+  } catch {
+    console.warn("[config] ignoring invalid JSON map env var");
+    return {};
+  }
 }
 
 function normalizePk(value: string | undefined): `0x${string}` | null {
@@ -252,6 +275,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     uniswapV4SubgraphId: nonEmpty(env.UNISWAP_V4_SUBGRAPH_ID),
     camelotSubgraphId: nonEmpty(env.CAMELOT_SUBGRAPH_ID),
     coinGeckoApiKey: nonEmpty(env.COINGECKO_API_KEY),
+    bybitApiBase: nonEmpty(env.BYBIT_API_BASE) ?? "https://api.bybit.com",
+    bybitSymbolMap: jsonStringMap(env.BYBIT_SYMBOL_MAP, true),
     geminiApiKey: nonEmpty(env.GEMINI_API_KEY),
     geminiModel: nonEmpty(env.GEMINI_MODEL) ?? "gemini-1.5-flash",
 

@@ -23,6 +23,7 @@ from .common import (
     parse_positions,
     provenance,
 )
+from .returns import build_position_risk
 
 _SOURCE = "BE Data /compute/optimize"
 
@@ -105,6 +106,7 @@ def compute_optimize(
     raw_positions: list[dict] | None,
     correlation: dict | None,
     constraints: dict | None = None,
+    price_history: list[dict] | None = None,
 ) -> dict:
     positions: list[Position] = parse_positions(raw_positions)
     warnings: list[str] = []
@@ -129,10 +131,17 @@ def compute_optimize(
         warnings.append("All positions have zero liquidity; assuming equal current weights.")
     current_weights = sizes / sizes.sum()
 
-    # Volatility proxy: without per-token vol we assume unit variance and let the
-    # correlation structure drive risk parity. Covariance = correlation here.
-    rho = _position_correlation(positions, correlation)
-    cov = rho  # unit variances -> covariance equals correlation
+    # Prefer a real covariance built from priceHistory (per-token vol + both-leg
+    # correlation). Fall back to the correlation-matrix / unit-variance proxy when
+    # price series are unavailable.
+    risk = build_position_risk(positions, price_history)
+    if risk["usable"]:
+        cov = risk["cov"]
+        cov_source = "priceHistory covariance (real vol + both legs)"
+    else:
+        cov = _position_correlation(positions, correlation)  # unit-variance proxy
+        cov_source = "correlation-matrix proxy (unit variance)"
+        warnings.append("No usable priceHistory; using unit-variance correlation proxy.")
 
     optimal = _risk_parity_weights(cov)
     degraded = optimal is None
@@ -178,5 +187,6 @@ def compute_optimize(
         "actions": actions,
         "expectedReturn": expected_return,
         "expectedRisk": round(expected_risk, 6),
+        "covarianceSource": cov_source,
         "provenance": provenance(label, _SOURCE, warnings),
     }

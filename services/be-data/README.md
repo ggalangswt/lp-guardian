@@ -1,54 +1,67 @@
 # BE Data Service
 
-Portfolio math + TEE signing for LP Guardian. Owned by **BE Lead (Data)**.
+Portfolio math, external data adapters, and TEE signing for LP Guardian.
+Owned by **BE Lead (Data)**.
 
 Python / FastAPI service that BE Agent (Node.js) calls over HTTP via
 `BE_DATA_SERVICE_URL`. It computes correlation, optimization, and simulation,
-fetches its own price history from Bybit, and signs report commitments. The
-production TEE target is Phala TDX/CVM; local development and unsupported TEE
-paths use developer-key emulation.
+provides on-chain / market data adapters, and signs reports either with a
+**Phala Cloud Intel TDX** attestation in production or developer-key emulation
+locally.
 
 ## Endpoints
 
-| Method | Path                   | Purpose |
-| ------ | ---------------------- | ------- |
-| GET    | `/health`              | Liveness + active TEE provider + cache status |
-| POST   | `/compute/correlation` | Pearson correlation matrix + risk concentration |
-| POST   | `/compute/optimize`    | Risk-parity optimal weights + rebalance actions |
-| POST   | `/compute/simulate`    | HOLD / REBALANCE / CONSOLIDATE_DUST projections |
-| POST   | `/tee/sign`            | Sign report commitment (Phala TDX target or developer-key fallback) |
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/health` | Liveness and active TEE provider |
+| POST | `/compute/correlation` | Pearson correlation matrix and risk concentration |
+| POST | `/compute/optimize` | Risk-parity optimal weights and rebalance actions |
+| POST | `/compute/simulate` | HOLD / REBALANCE / CONSOLIDATE_DUST projections |
+| POST | `/tee/sign` | Sign report commitment with Phala TDX or developer-key |
+| POST | `/tee/verify` | Verify an attestation binds to given inputs/outputs |
+| POST | `/prices/bybit` | Daily-close `priceHistory` from Bybit |
+| POST | `/prices/chainlink` | On-chain Chainlink oracle prices |
+| GET | `/positions/merchant-moe/{wallet}` | Merchant Moe positions |
+| GET | `/positions/onchain/{wallet}` | NFPM positions read directly from Mantle RPC |
+| GET | `/positions/{protocol}/{wallet}` | `merchant-moe`, `agni`, or `fluxion` subgraph positions |
 
 Request/response schemas mirror `apps/server/src/services/beDataClient.ts`.
-Every response carries a `provenance` object (`COMPUTED` / `EMULATED` / …) so the
-honesty labels propagate to the UI.
+Every response carries a `provenance` object (`VERIFIED`, `COMPUTED`,
+`EMULATED`, `UNAVAILABLE`, etc.) so honesty labels propagate to the UI.
 
-## Architecture notes
+## Architecture Notes
 
-- **800ms budget.** BE Agent applies an 800ms client timeout. The request path
-  is therefore **cache-first**: prices come from an in-memory cache that a
-  background task pre-warms on startup and refreshes on an interval. Cache misses
-  degrade gracefully (identity correlation + `EMULATED`) instead of blocking.
-- **Positions are raw NFPM snapshots** (`token0`/`token1` are addresses, no USD
-  value). `liquidity` is the position-size proxy. `data/bybit.py` maps known
-  Mantle token addresses to Bybit spot symbols.
-- **TEE honesty.** Only a real hardware TEE attestation with `VERIFIED`
-  provenance may mark the orchestrator message `VERIFIED`. Developer-key signing
-  is labelled `EMULATED` and never masquerades as hardware attestation.
-- **Auth.** If `BE_DATA_AUTH_TOKEN` is set, compute and signing endpoints require
-  `Authorization: Bearer <token>`. Health remains unauthenticated.
+- **800ms budget.** BE Agent applies an 800ms client timeout to compute calls,
+  so the request path is pure NumPy/SciPy on caller-supplied inputs.
+- **Prices are attested inputs.** The Node backend can fetch price history and
+  pass it into BE Data as `priceHistory`; BE Data also exposes independent
+  Bybit and Chainlink adapters for cross-checks.
+- **Data adapters degrade honestly.** Bybit, Chainlink, Mantle RPC, and protocol
+  subgraph adapters return `UNAVAILABLE` provenance when unconfigured or
+  unreachable. They do not fabricate values.
+- **TEE honesty.** Only real Phala TDX attestation with verified binding may
+  mark the orchestrator message `VERIFIED`. Developer-key signing is labelled
+  `EMULATED`.
+- **Auth.** If `BE_DATA_AUTH_TOKEN` is set, protected endpoints require
+  `Authorization: Bearer <token>`. `/health` remains unauthenticated.
 
-## Local development
+## TEE Provider
+
+`tee/sign.py` resolves the provider at runtime:
+
+1. `phala` - a dstack guest-agent socket exists, meaning Phala Cloud Intel TDX CVM.
+2. `developer-key` - no socket, local HMAC emulation.
+
+Force a provider with `TEE_PROVIDER=phala|developer-key`.
+
+## Local Development
 
 ```bash
 cd services/be-data
 python3.13 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 cp .env.example .env
-
-# run
 ./venv/bin/uvicorn main:app --reload --port 8000
-
-# smoke test
 curl http://localhost:8000/health
 ```
 
@@ -64,51 +77,53 @@ BE_DATA_SERVICE_URL=http://localhost:8000 BE_DATA_AUTH_TOKEN=optional-local-toke
 ./venv/bin/python -m pytest tests/ -q
 ```
 
-## Docker (local)
+`tests/test_data.py` covers the data adapters with all network mocked.
+
+## Docker
 
 ```bash
 docker compose up --build
 ```
 
-## Legacy AWS Nitro Enclaves
+## Phala Cloud
 
-This section is legacy-only. The current production TEE decision is Phala
-TDX/CVM through `PHALA_API_URL`; the Nitro tooling below is retained only for
-backward-compatible experiments.
+Runs the whole BE Data service inside an Intel TDX CVM, so the portfolio math
+itself is attested, not just the signature. `tee/sign.py` auto-detects the
+dstack socket and `/tee/sign` returns a real TDX quote (`provider: "phala"`,
+`VERIFIED`).
 
-1. **Launch an EC2 instance with Nitro Enclaves enabled** (e.g. `m5.xlarge`),
-   `--enclave-options Enabled=true`. Install Docker, `nitro-cli`, and `socat`,
-   and start the allocator service.
-2. **Copy this directory** to the instance.
-3. **Build + run the enclave:**
-   ```bash
-   ./build_eif.sh
-   ```
-   Record the printed **PCR0** measurement — that is the code identity you can
-   anchor on-chain (Mantle `codeHash`).
-4. **Bridge host TCP → enclave vsock:**
-   ```bash
-   ./vsock_proxy.sh        # host 127.0.0.1:8000 -> enclave vsock 16:8000
-   ```
-   (Inside the enclave, `entrypoint.sh` already runs the matching vsock→uvicorn
-   bridge — there is no network interface in an enclave, only vsock.)
-5. **Point the backend at the proxy:**
-   ```env
-   BE_DATA_SERVICE_URL=http://localhost:8000
-   ```
-6. Verify `GET /health` now reports `"tee_provider": "nitro"`, `"tee_active": true`.
-   This is not the production Phala path.
+1. Build and push an amd64 image:
 
-### What needs your input vs. what's done
+```bash
+cd services/be-data
+docker login
+docker run --privileged --rm tonistiigi/binfmt --install amd64
+docker buildx create --name lpgbuilder --driver docker-container --use
+docker buildx build --platform linux/amd64 \
+  -t <your-dockerhub-user>/lp-guardian-be-data:latest --push .
+```
 
-- **Done (no config):** compute endpoints, BE Data auth gate, developer-key
-  fallback for local dev, and backward-compatible legacy Nitro code.
-- **You configure:** `BE_DATA_SERVICE_URL`, optional `BE_DATA_AUTH_TOKEN`, optional
-  `BYBIT_API_KEY` (public API works for the demo), and the Phala CVM service
-  behind `PHALA_API_URL`.
+2. Deploy on Phala Cloud using `docker-compose.phala.yml`, set `BE_DATA_IMAGE`
+   to the pushed tag, and choose a CPU TDX instance.
+3. Verify the TEE is live:
+
+```bash
+curl https://<your-cvm-url>/health
+```
+
+4. Point the Node backend at it:
+
+```env
+BE_DATA_SERVICE_URL=https://<your-cvm-url>
+```
+
+The OptimizeAgent `/tee/sign` call then returns a real TDX quote; the
+orchestrator message can be marked `VERIFIED`, and the attestation hash can be
+anchored on Mantle.
 
 ## Configuration
 
 See `.env.example`. Key vars: `BE_DATA_PORT`, `BE_DATA_AUTH_TOKEN`,
-`BYBIT_API_BASE`, `BYBIT_API_KEY`, `TEE_PROVIDER`
-(`auto`|`phala-tdx`|`developer-key`), `DEVELOPER_SIGNING_KEY`.
+`TEE_PROVIDER`, `DEVELOPER_SIGNING_KEY`, `MANTLE_RPC_URL`, `NFPM_ADDRESS`,
+`CHAINLINK_FEEDS`, `BYBIT_API_BASE`, `BYBIT_SYMBOL_MAP`,
+`MERCHANT_MOE_SUBGRAPH_URL`, `AGNI_SUBGRAPH_URL`, and `FLUXION_SUBGRAPH_URL`.

@@ -1,18 +1,17 @@
 """Correlation matrix engine.
 
-Builds a per-token price-return correlation matrix from Bybit daily closes and
-derives a ``riskConcentration`` score (the strongest off-diagonal correlation).
+Builds a per-token price-return correlation matrix from the caller-supplied
+``priceHistory`` and derives a ``riskConcentration`` score (the strongest
+off-diagonal correlation).
 
-The request path never blocks on the network: prices come from the warm Bybit
-cache. When a token's price series is unavailable (unknown address or cold
-cache) the matrix degrades to an identity-like structure with an EMULATED label.
+Prices are provided by the Node backend (which has egress) as attested inputs —
+the TEE CVM itself cannot reach price APIs. When a token's series is missing the
+matrix degrades to an identity-like structure with an EMULATED label.
 """
 
 from __future__ import annotations
 
 import numpy as np
-
-from data import bybit
 
 from .common import (
     LABEL_COMPUTED,
@@ -36,10 +35,45 @@ def _daily_returns(closes: list[float]) -> np.ndarray:
     return rets[np.isfinite(rets)]
 
 
+def _closes_from_price_history(price_history: list[dict] | None) -> dict[str, list[float]]:
+    """Index a caller-supplied priceHistory into token-address -> close series.
+
+    Accepts entries shaped ``{token, closes:[..]}`` or ``{token, prices:[{price}|[ts,price]]}``.
+    Used when BE Agent fetches prices itself (e.g. inside a TEE CVM that cannot
+    reach Bybit) and passes them in as attested inputs.
+    """
+    out: dict[str, list[float]] = {}
+    for entry in price_history or []:
+        if not isinstance(entry, dict):
+            continue
+        token = str(entry.get("token", entry.get("address", ""))).lower()
+        if not token:
+            continue
+        closes: list[float] = []
+        if isinstance(entry.get("closes"), list):
+            raw = entry["closes"]
+        elif isinstance(entry.get("prices"), list):
+            raw = entry["prices"]
+        else:
+            raw = []
+        for point in raw:
+            try:
+                if isinstance(point, (int, float)):
+                    closes.append(float(point))
+                elif isinstance(point, dict) and "price" in point:
+                    closes.append(float(point["price"]))
+                elif isinstance(point, (list, tuple)) and len(point) >= 2:
+                    closes.append(float(point[1]))  # [timestamp, price]
+            except (TypeError, ValueError):
+                continue
+        if len(closes) >= 2:
+            out[token] = closes
+    return out
+
+
 def compute_correlation(
     raw_positions: list[dict] | None,
     price_history: list[dict] | None = None,
-    days: int = 7,
 ) -> dict:
     positions: list[Position] = parse_positions(raw_positions)
     tokens = unique_token_addresses(positions)
@@ -57,15 +91,14 @@ def compute_correlation(
             ),
         }
 
-    # Collect return series per token from the warm cache.
+    # Prices come from the caller-supplied priceHistory (attested input). The
+    # Node backend fetches them (it can reach the internet); the TEE cannot.
+    supplied_closes = _closes_from_price_history(price_history)
+
     returns_by_token: dict[str, np.ndarray] = {}
     missing: list[str] = []
     for addr in tokens:
-        symbol = bybit.symbol_for_address(addr)
-        if symbol is None:
-            missing.append(addr)
-            continue
-        closes = bybit.get_cached_closes(symbol, days=days)
+        closes = supplied_closes.get(addr)
         if not closes:
             missing.append(addr)
             continue
@@ -91,7 +124,7 @@ def compute_correlation(
             "provenance": provenance(
                 LABEL_EMULATED,
                 _SOURCE,
-                warnings + ["Insufficient warm price series to compute correlation."],
+                warnings + ["Insufficient supplied price series to compute correlation."],
             ),
         }
 
