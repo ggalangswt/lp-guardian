@@ -40,7 +40,7 @@ export interface TeeSignResponse {
   signature: `0x${string}`;
   attestation: string;
   attestationHash: `0x${string}`;
-  provider: "phala" | "developer-key" | "mock";
+  provider: "phala-tdx" | "phala" | "aws-nitro" | "developer-key" | "mock";
   provenance?: BeDataProvenance;
 }
 
@@ -132,12 +132,14 @@ export class BeDataClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const headers: Record<string, string> = { "content-type": "application/json" };
-    if (this.config.beDataAuthToken) {
-      headers.authorization = `Bearer ${this.config.beDataAuthToken}`;
-    }
-
     try {
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+      };
+      if (this.config.beDataAuthToken) {
+        headers.authorization = `Bearer ${this.config.beDataAuthToken}`;
+      }
+
       const response = await fetch(new URL(path, baseUrl), {
         method: "POST",
         headers,

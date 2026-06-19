@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ServerConfig } from "../config.js";
 import { fail, ok } from "../http/responses.js";
 import { portfolioDiagnoseSchema } from "../schemas/portfolio.js";
+import type { AgentOrchestrator } from "../services/agentOrchestrator.js";
 import { PortfolioService } from "../services/portfolio/portfolioService.js";
 import type { NfpmPositionSnapshot } from "../services/robinhood/transferScanner.js";
 import type { V3PositionRaw } from "../indexer/types.js";
@@ -31,6 +32,10 @@ function toJsonSafe(value: unknown): unknown {
   );
 }
 
+function isPublicPortfolioAlias(url: string): boolean {
+  return new URL(url).pathname === "/portfolio/diagnose";
+}
+
 function positionToWire(
   position: NfpmPositionSnapshot,
   walletRisk: WalletRiskInputResult,
@@ -51,28 +56,38 @@ function positionToWire(
     tickLower: { tickIdx: position.tickLower.toString() },
     tickUpper: { tickIdx: position.tickUpper.toString() },
     pool: {
-      id: poolState?.poolAddress.toLowerCase() ?? "",
+      id: (position.poolAddress ?? poolState?.poolAddress ?? "").toLowerCase(),
       feeTier: position.fee.toString(),
-      tickSpacing: "0",
-      tick: poolState ? poolState.currentTick.toString() : null,
+      tickSpacing: (position.tickSpacing ?? 0).toString(),
+      tick: position.currentTick !== undefined
+        ? position.currentTick.toString()
+        : poolState
+          ? poolState.currentTick.toString()
+          : null,
       token0: {
         id: position.token0.toLowerCase(),
-        symbol: position.token0.slice(0, 8),
-        decimals: "18",
+        symbol: position.token0Symbol ?? position.token0.slice(0, 8),
+        decimals: (position.token0Decimals ?? 18).toString(),
       },
       token1: {
         id: position.token1.toLowerCase(),
-        symbol: position.token1.slice(0, 8),
-        decimals: "18",
+        symbol: position.token1Symbol ?? position.token1.slice(0, 8),
+        decimals: (position.token1Decimals ?? 18).toString(),
       },
     },
-    protocol: "uniswap-v3",
-    chainId: config.robinhoodChainId,
-    isInRange: poolState?.isInRange,
+    protocol: position.protocol ?? "uniswap-v3",
+    chainId: position.chainId ?? (
+      config.chainMode === "mantle" ? config.mantleChainId : config.robinhoodChainId
+    ),
+    currentValueUSD: position.currentValueUSD,
+    isInRange: position.isInRange ?? poolState?.isInRange,
   };
 }
 
-export function createPortfolioRoute(config: ServerConfig): Hono {
+export function createPortfolioRoute(
+  config: ServerConfig,
+  agentOrchestrator?: AgentOrchestrator,
+): Hono {
   const route = new Hono();
   const service = new PortfolioService(config);
 
@@ -135,6 +150,44 @@ export function createPortfolioRoute(config: ServerConfig): Hono {
           parsed.error.issues,
         ),
         400,
+      );
+    }
+
+    if (agentOrchestrator && isPublicPortfolioAlias(c.req.url)) {
+      const result = agentOrchestrator.enqueue({
+        walletAddress: parsed.data.walletAddress as Address,
+        tokenId: parsed.data.tokenId,
+        targetAgent: "optimize",
+        publishReport: parsed.data.publishReport,
+        recordTuringDecision: parsed.data.recordTuringDecision,
+        recordTuringOutcome: parsed.data.recordTuringOutcome,
+        turingDecisionId: parsed.data.turingDecisionId,
+        simulatedPnlBps: parsed.data.simulatedPnlBps,
+        simulatedScoreBps: parsed.data.simulatedScoreBps,
+        requirePhala: parsed.data.requirePhala,
+        requireTee: parsed.data.requireTee,
+        phalaAttestationHash: parsed.data.phalaAttestationHash as `0x${string}` | undefined,
+        teeAttestationHash: parsed.data.teeAttestationHash as `0x${string}` | undefined,
+      });
+
+      return c.json(
+        ok({
+          status: "queued",
+          correlationId: result.run.correlationId,
+          streamUrl: `/agent/orchestration/stream/${result.run.correlationId}`,
+          run: result.run,
+          messages: result.messages,
+          provenance: [
+            {
+              label: "COMPUTED",
+              source: "BE Agent orchestration queue",
+              degraded: false,
+              warnings: [],
+              observedAt: Date.now(),
+            },
+          ],
+        }),
+        202,
       );
     }
 
