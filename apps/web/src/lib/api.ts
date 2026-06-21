@@ -2,7 +2,7 @@
 // /api and /health to the configured backend base URL. In production we must
 // hit the deployed backend directly.
 
-// TODO(robinhood): set after backend is deployed
+// TODO(mantle): set after Mantle-facing backend is deployed
 const DEFAULT_API_BASE_URL = "";
 
 export function resolveApiBaseUrl(): string {
@@ -43,7 +43,7 @@ export interface V3PositionRaw {
   };
   /** Source protocol — used to disambiguate the diagnose resolver (the same
    *  tokenId can exist on multiple PositionManagers). Additive/optional. */
-  protocol?: "uniswap-v3" | "uniswap-v4" | "camelot";
+  protocol?: "merchant-moe" | "agni" | "fluxion" | "uniswap-v3";
 }
 
 export interface PortfolioRisk {

@@ -25,7 +25,8 @@ function formatNumber(n: number, digits = 4): string {
 }
 
 function chainExplorerUrl(chainId: number, txHash: string): string | null {
-  if (chainId === 46630) return null; // Robinhood testnet has no public explorer yet
+  if (chainId === 5000) return `https://mantlescan.xyz/tx/${txHash}`;
+  if (chainId === 5003) return `https://sepolia.mantlescan.xyz/tx/${txHash}`;
   void txHash;
   return null;
 }
@@ -245,7 +246,7 @@ function PayloadSections({ payload, token1Symbol }: PayloadSectionsProps) {
       )}
 
       {payload.hooks && (
-        <Section title="V4 Hooks" label="LABELED">
+        <Section title="Strategy Routes" label="LABELED">
           <Row k="pair" v={payload.hooks.pair} />
           <Row k="top family" v={payload.hooks.topFamily.toLowerCase().replace(/_/g, "-")} />
           <Row k="candidate count" v={String(payload.hooks.candidateCount)} />

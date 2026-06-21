@@ -86,60 +86,58 @@ const PHASES = [
   { n: "02", name: "swap.replay",                label: "COMPUTED",  color: "var(--lp-purple)" },
   { n: "03", name: "il.reconstruct",             label: "COMPUTED",  color: "var(--lp-purple)" },
   { n: "04", name: "regime.classify",            label: "ESTIMATED", color: "var(--lp-toxic)" },
-  { n: "05", name: "hooks.discover",             label: "LABELED",   color: "var(--lp-purple)" },
-  { n: "06", name: "hook.replay (1k swaps)",     label: "COMPUTED",  color: "var(--lp-purple)" },
-  { n: "07", name: "migration.preview",          label: "COMPUTED",  color: "var(--lp-purple)" },
-  { n: "08", name: "report.upload (IPFS)",       label: "VERIFIED",  color: "var(--lp-cobalt)" },
-  { n: "09", name: "anchor.robinhood-chain",     label: "VERIFIED",  color: "var(--lp-cobalt)" },
-  { n: "10", name: "verdict.synthesize (TEE)",   label: "VERIFIED",  color: "var(--lp-cobalt)" },
+  { n: "05", name: "correlation.matrix",         label: "COMPUTED",  color: "var(--lp-purple)" },
+  { n: "06", name: "strategy.simulate",          label: "COMPUTED",  color: "var(--lp-purple)" },
+  { n: "07", name: "proposal.preview",           label: "COMPUTED",  color: "var(--lp-purple)" },
+  { n: "08", name: "report.publish (IPFS)",      label: "VERIFIED",  color: "var(--lp-cobalt)" },
+  { n: "09", name: "anchor.mantle",              label: "VERIFIED",  color: "var(--lp-cobalt)" },
+  { n: "10", name: "nitro.attest",               label: "VERIFIED",  color: "var(--lp-cobalt)" },
 ];
 
-/* TODO(arch): tech stack labels */
 const STACK = [
-  { name: "Storage",       role: "Blob anchoring for signed reports",          variant: "cobalt" as StickerVariant },
-  { name: "Robinhood Chain", role: "On-chain anchor tx + iNFT state",            variant: "cobalt" as StickerVariant },
-  { name: "TEE",           role: "TEE execution — verdict signed inside enclave", variant: "cobalt" as StickerVariant },
-  { name: "ERC-7857",      role: "iNFT agent identity — memoryRoot on chain",  variant: "magenta" as StickerVariant },
-  { name: "Uniswap V4",    role: "Hook discovery + swap replay against hooks", variant: "purple" as StickerVariant },
-  { name: "Agent Memory",  role: "ERC-7857 memoryRoot + reputation updated on-chain", variant: "purple" as StickerVariant },
-  { name: "MCP",           role: "5 product tools + ping — agent-callable", variant: "yellow" as StickerVariant },
-  { name: "Permit2",       role: "EIP-712 migration bundle — user keeps custody", variant: "magenta" as StickerVariant },
+  { name: "Mantle",        role: "L2 settlement, Turing registry, agent decisions, and report anchors", variant: "cobalt" as StickerVariant },
+  { name: "Byreal Skills", role: "Scout, Strategist, Executor, Sentinel callable by agent wallets", variant: "yellow" as StickerVariant },
+  { name: "ElizaOS",       role: "Agent orchestration, memory, characters, and action handlers", variant: "purple" as StickerVariant },
+  { name: "AWS Nitro",     role: "Off-chain enclave attestation, signed back to Mantle", variant: "cobalt" as StickerVariant },
+  { name: "FastAPI",       role: "Python portfolio math service for simulation and optimization", variant: "magenta" as StickerVariant },
+  { name: "Merchant Moe",  role: "Primary Mantle LP source for positions, pools, and ticks", variant: "purple" as StickerVariant },
+  { name: "Bybit + Chainlink", role: "Price feeds, trading signals, and oracle checks", variant: "cobalt" as StickerVariant },
+  { name: "Solidity",      role: "LPGuardianTuringRegistry, Permit2Bundler, and TEEAnchor", variant: "magenta" as StickerVariant },
 ];
 
 const INTEGRATIONS = [
   {
     index: "A",
-    title: "Storage for signed reports",
-    body: "Every diagnosis uploads a JSON report blob via IPFS/Storage DA layer. The returned URL is the first element of the verification chain — anyone can re-fetch it without LP Guardian's server.",
+    title: "IPFS report artifact",
+    body: "Every diagnosis publishes a JSON report artifact. The returned CID is the first verification path — anyone can re-fetch it without LP Guardian's server.",
     color: "var(--lp-cobalt)",
   },
   {
     index: "B",
-    title: "Robinhood Chain anchor tx",
-    body: "After upload, the agent submits an on-chain tx on Robinhood Chain storing the rootHash, storageUrl, tokenId, and verdict. The tx hash becomes the second verification path.",
+    title: "Mantle Turing anchor",
+    body: "After publishing, the agent records decision and report hashes in LPGuardianTuringRegistry on Mantle. The tx hash becomes the second verification path.",
     color: "var(--lp-cobalt)",
   },
   {
     index: "C",
-    title: "TEE attestation",
-    body: "The verdict is synthesized inside a TEE provider with a broker-verifiable attestation report. No LP Guardian server is in the signing path — the TEE signs the hash before anchoring.",
+    title: "AWS Nitro attestation",
+    body: "The verdict is synthesized inside AWS Nitro Enclaves. The enclave signs the report hash before the agent anchors the decision on Mantle.",
     color: "var(--lp-cobalt)",
   },
   {
     index: "D",
-    title: "ERC-7857 iNFT on Robinhood Chain",
-    body: "LP Guardian/01 is an autonomous agent NFT on Robinhood Chain. Its memoryRoot evolves per diagnosis, reputation increments per run, and migrationsTriggered bumps when users sign Permit2 bundles.",
+    title: "ERC-8004-style agent identity",
+    body: "LP Guardian records agent decisions and outcomes on Mantle, creating a benchmark trail for Scout, Strategist, Executor, and Sentinel.",
     color: "var(--lp-magenta)",
   },
 ];
 
-/* TODO(arch): verification labels */
 const VERIFY_PATHS = [
-  { id: "A", label: "Storage URL",        method: "Re-fetch blob, hash the JSON, compare rootHash" },
-  { id: "B", label: "Robinhood Chain anchor tx", method: "Read tx calldata or event, extract rootHash" },
+  { id: "A", label: "IPFS CID",        method: "Re-fetch report, hash the JSON, compare rootHash" },
+  { id: "B", label: "Mantle anchor tx", method: "Read registry event, extract reportHash and scenarioHash" },
   { id: "C", label: "REST report cache",  method: "Fetch by rootHash from LP Guardian API and compare anchor fields" },
-  { id: "D", label: "IPFS CID",           method: "Fetch via any IPFS gateway, recompute SHA-256" },
-  { id: "E", label: "iNFT memoryRoot",    method: "agents(1).memoryRoot on Robinhood Chain = latest blob" },
+  { id: "D", label: "AWS Nitro quote",    method: "Verify enclave attestation against signed report hash" },
+  { id: "E", label: "Turing outcome",     method: "Compare decisionId outcome score with report hash" },
 ];
 
 /* ─── Page ──────────────────────────────────────────────────────────── */
@@ -156,7 +154,7 @@ export function Deck() {
         <SlideStage variant="plain">
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}>
             <StickerBadge variant="yellow" style={{ transform: "rotate(-1.5deg)" }}>
-              ARBITRUM OPEN HOUSE LONDON BUILDATHON
+              THE TURING TEST HACKATHON 2026
             </StickerBadge>
             <StickerBadge variant="cobalt">SUBMISSION DECK</StickerBadge>
           </div>
@@ -186,26 +184,25 @@ export function Deck() {
               fontWeight: 400,
             }}
           >
-            An autonomous diagnostic agent for Uniswap V3 and V4 LPs. It explains
-            why a position is bleeding, simulates V4 hooks against real swap history,
-            and publishes a verifiable signed report anchored to Storage, Robinhood Chain,
-            and an ERC-7857 iNFT.
+            An AI quant agent for Mantle LP portfolios. It explains why yield is bleeding,
+            simulates strategy actions across Merchant Moe, Agni, and Fluxion data,
+            then publishes a verifiable decision trail anchored to Mantle.
           </p>
 
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 32 }}>
+          <div className="lp-action-row" style={{ marginTop: 32 }}>
             <Link
               to="/atlas"
               className="lp-btn-primary"
-              style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8 }}
+              style={{ textDecoration: "none" }}
             >
               Try it live <PixelArrow />
             </Link>
             <Link
               to="/agent"
               className="lp-btn-ghost"
-              style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8 }}
+              style={{ textDecoration: "none" }}
             >
-              View iNFT <PixelArrow />
+              View Agent <PixelArrow />
             </Link>
           </div>
         </SlideStage>
@@ -224,19 +221,19 @@ export function Deck() {
               {
                 n: "01",
                 heading: "LP positions bleed quietly.",
-                body: "A Uniswap V3 position can fall out of range, collect zero fees, and accumulate impermanent loss while every portfolio tracker shows it as \"active.\" The bleed is invisible without tick-level inspection.",
+                body: "A Mantle LP portfolio can drift out of range, collect weak fees, and accumulate impermanent loss while every dashboard still shows it as \"active.\" The bleed is invisible without strategy-level inspection.",
                 color: "var(--lp-bleed)",
               },
               {
                 n: "02",
                 heading: "Dashboards flatten the data.",
-                body: "Revert, Debank, and similar tools aggregate — they do not decompose IL from the tick range, reconstruct pool regime, or replay what a V4 hook would have done in the same swap window.",
+                body: "Portfolio dashboards aggregate — they do not decompose IL, reconstruct market regime, or compare LP yield against mETH, USDY, Bybit signals, and Chainlink data.",
                 color: "var(--lp-toxic)",
               },
               {
                 n: "03",
                 heading: "Migration is guesswork.",
-                body: "Moving to V4 hooks without backtesting the hook against the pool's actual swap history means choosing blind. Most LPs never do it. Most V4 hooks go unused as a result.",
+                body: "Rebalancing without a simulated decision trail means choosing blind. Most LPs cannot prove why an agent recommended hold, monitor, rebalance, or exit.",
                 color: "var(--lp-purple)",
               },
             ].map((c) => (
@@ -317,19 +314,19 @@ export function Deck() {
               {
                 n: "1",
                 title: "Diagnose",
-                body: "Resolve the LP NFT. Reconstruct IL from tick bounds and current sqrtPriceX96. Classify the pool regime. Assign honesty labels — VERIFIED, COMPUTED, ESTIMATED — to every output.",
+                body: "Resolve Mantle LP positions. Reconstruct IL and fees from pool state. Classify portfolio regime. Assign honesty labels — VERIFIED, COMPUTED, ESTIMATED — to every output.",
                 color: "var(--lp-purple)",
               },
               {
                 n: "2",
                 title: "Simulate",
-                body: "Discover candidate V4 hooks for the pair. Replay the last 1,000 swaps through each hook. Score by projected fee capture. Propose a migration path only if the simulation backtests positively.",
+                body: "Run correlation, optimization, and scenario simulations through the Python service. Score projected fees, IL, risk concentration, and gas before recommending any action.",
                 color: "var(--lp-magenta)",
               },
               {
                 n: "3",
                 title: "Anchor",
-                body: "Sign the verdict inside a TEE. Upload the report to Storage. Anchor rootHash on Robinhood Chain. Update the ERC-7857 iNFT memoryRoot. Multiple independent verification paths, one rootHash.",
+                body: "Sign the verdict inside AWS Nitro. Publish the report artifact. Anchor decision and outcome hashes on Mantle. Multiple independent verification paths, one rootHash.",
                 color: "var(--lp-cobalt)",
               },
             ].map((c, i) => (
@@ -510,7 +507,7 @@ export function Deck() {
         {/* ── Slide 6: Integration Points ───────────────────────────────────────────── */}
         {/* TODO(arch): Revise integration points after backend redesign */}
         <SlideStage variant="band">
-          <Cap style={{ marginBottom: 16 }}>WHY ROBINHOOD CHAIN · 4 INTEGRATION POINTS</Cap>
+          <Cap style={{ marginBottom: 16 }}>WHY MANTLE · 4 INTEGRATION POINTS</Cap>
           <h2
             style={{
               margin: "0 0 36px",
@@ -523,8 +520,8 @@ export function Deck() {
               letterSpacing: "-0.01em",
             }}
           >
-            Robinhood Chain is not a badge.{" "}
-            <span style={{ color: "var(--lp-cobalt)" }}>It is the trust path.</span>
+            Mantle is not a badge.{" "}
+            <span style={{ color: "var(--lp-cobalt)" }}>It is the agent benchmark path.</span>
           </h2>
           <div
             style={{
@@ -685,21 +682,21 @@ export function Deck() {
               Run a real diagnosis.
             </h2>
             <p style={{ margin: "0 auto 32px", maxWidth: "48ch", fontSize: 18, color: "var(--lp-ink-soft)", lineHeight: 1.6 }}>
-              Paste a Uniswap LP NFT tokenId or use one of six curated demo wallets.
-              The pipeline runs end-to-end on chain data — no mocks.
+              Paste a Mantle LP wallet or use one of six curated demo portfolios.
+              The interface follows the Turing Test stack even while backend migration continues.
             </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
+            <div className="lp-action-row" style={{ justifyContent: "center" }}>
               <Link
                 to="/atlas"
                 className="lp-btn-primary"
-                style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8 }}
+                style={{ textDecoration: "none" }}
               >
                 Open the Atlas <PixelArrow />
               </Link>
               <Link
                 to="/roadmap"
                 className="lp-btn-ghost"
-                style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8 }}
+                style={{ textDecoration: "none" }}
               >
                 View Roadmap <PixelArrow />
               </Link>

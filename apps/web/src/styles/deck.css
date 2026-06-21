@@ -1,34 +1,30 @@
-/* ── Deck page — 1920x1080 slide canvas, auto-scaled to viewport ─── */
+/* ── Deck page — responsive pitch sections ───────────────────────── */
 
 .deck-page {
   display:        flex;
   flex-direction: column;
   min-height:     100vh;
+  overflow-x:      hidden;
 }
 
 .deck-stack {
   display:        flex;
   flex-direction: column;
-  gap:            0;
   position:       relative;
   z-index:        1;
 }
 
-/* Outer viewport-fit box — 16:9, full page width */
 .deck-viewport {
   width:          100%;
   aspect-ratio:   16 / 9;
-  overflow:       hidden;
+  overflow:       clip;
   position:       relative;
-  container-type: inline-size;
 }
 
-/* 1920x1080 design canvas — scaled via container inline-size */
 .deck-slide {
-  width:            1920px;
-  height:           1080px;
-  transform-origin: top left;
-  transform:        scale(calc(100cqi / 1920));
+  width:            100%;
+  height:           100%;
+  min-height:       0;
   display:          flex;
   flex-direction:   column;
   justify-content:  center;
@@ -41,15 +37,98 @@
 }
 
 .deck-slide--band {
-  background:    var(--lp-base-deep);
-  border-top:    2px solid var(--lp-border);
-  border-bottom: 2px solid var(--lp-border);
+  background:
+    radial-gradient(circle at 16% 16%, rgb(255 255 255 / 0.82), transparent 36%),
+    linear-gradient(180deg, rgb(238 249 255 / 0.78), rgb(248 253 255 / 0.7));
+  border-top:    1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
-/* Content frame — centered, 100px horizontal padding on 1920 canvas */
 .deck-slide-frame {
   width:     100%;
-  max-width: 1600px;
+  max-width: 1180px;
   margin:    0 auto;
-  padding:   0 100px;
+  padding:   0 clamp(22px, 5vw, 48px);
+}
+
+.deck-page .deck-slide-frame > h1 {
+  max-width: 10ch;
+  font-size: clamp(4.4rem, 13vw, 8.8rem) !important;
+  letter-spacing: 0 !important;
+}
+
+.deck-page .deck-slide-frame h2 {
+  max-width: 13ch;
+  font-size: clamp(2.4rem, 5.8vw, 4.3rem) !important;
+  letter-spacing: 0 !important;
+}
+
+.deck-page .deck-slide-frame p {
+  max-width: 66ch;
+}
+
+.deck-page .deck-slide-frame > p {
+  font-size: clamp(1rem, 1.6vw, 1.28rem) !important;
+}
+
+.deck-page .lp-window {
+  backdrop-filter: blur(12px);
+}
+
+.deck-page .lp-window-body {
+  padding: clamp(18px, 2.4vw, 28px);
+}
+
+.deck-page .deck-slide-frame [style*="border: 2px solid var(--lp-border)"] {
+  border: 1px solid color-mix(in srgb, var(--line) 82%, var(--grid-blue-strong)) !important;
+  border-radius: 16px !important;
+  background: rgb(248 253 255 / 0.82) !important;
+  box-shadow: 0 18px 48px rgb(6 57 47 / 0.08) !important;
+}
+
+.deck-page .deck-slide-frame [style*="grid-template-columns: repeat(3, 1fr)"],
+.deck-page .deck-slide-frame [style*="grid-template-columns: repeat(4, 1fr)"] {
+  gap: 16px !important;
+}
+
+.deck-page .deck-slide-frame [style*="grid-template-columns: repeat(3, 1fr)"] > div,
+.deck-page .deck-slide-frame [style*="grid-template-columns: repeat(4, 1fr)"] > div {
+  min-width: 0;
+}
+
+.deck-page .deck-slide-frame [style*="fontSize: 72"],
+.deck-page .deck-slide-frame [style*="font-size: 72"] {
+  font-size: 3.6rem !important;
+}
+
+@media (max-width: 1040px) {
+  .deck-slide { min-height: auto; }
+
+  .deck-page .deck-slide-frame [style*="grid-template-columns: repeat(4, 1fr)"],
+  .deck-page .deck-slide-frame [style*="grid-template-columns: repeat(3, 1fr)"],
+  .deck-page .lp-how-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .deck-page .deck-slide-frame [style*="gap: 80"] {
+    gap: 28px !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .deck-page .deck-slide-frame [style*="grid-template-columns"],
+  .deck-page .lp-how-grid,
+  .deck-page .lp-solution-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .deck-page .lp-solution-grid > div,
+  .deck-page .deck-slide-frame [style*="borderRight"] {
+    border-right: 0 !important;
+  }
+
+  .deck-page .deck-slide-frame [style*="fontSize: 72"],
+  .deck-page .deck-slide-frame [style*="font-size: 72"] {
+    font-size: 3rem !important;
+  }
 }

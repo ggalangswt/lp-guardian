@@ -45,7 +45,7 @@ export function HookScoringPanel({ result }: Props) {
     <section className="p-4 rounded-lg border border-slate-700 bg-slate-900/50">
       <header className="flex items-center justify-between gap-2">
         <h2 className="text-xs uppercase tracking-wider text-slate-500">
-          V4 hook scoring (heuristic)
+          Strategy route scoring (heuristic)
         </h2>
         <LabelBadge label="EMULATED" />
       </header>

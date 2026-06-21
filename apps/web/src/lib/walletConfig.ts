@@ -1,11 +1,11 @@
 import { privateKeyToAccount } from "viem/accounts";
 import { createConfig, http } from "wagmi";
-import { mainnet, sepolia } from "wagmi/chains";
+import { mantle, mantleSepoliaTestnet } from "wagmi/chains";
 import { injected, mock } from "wagmi/connectors";
 
 // Wallet stack — viem under the hood, wagmi for the React surface. The
-// migrate flow targets Sepolia (testnet) by default so judges can sign
-// without spending real ETH; mainnet stays available for users who want
+// migrate flow targets Mantle Sepolia (testnet) by default so judges can sign
+// without spending real MNT; Mantle mainnet stays available for users who want
 // to actually migrate. The `injected` connector covers the full long
 // tail of browser wallets including MetaMask, Rabby, Brave, Coinbase
 // Wallet — no separate connector entries needed, which keeps the type
@@ -52,7 +52,7 @@ if (mockEnabled && typeof window !== "undefined") {
 const mockAccount = mockEnabled ? privateKeyToAccount(ANVIL_KEY_0) : undefined;
 
 export const walletConfig = createConfig({
-  chains: [sepolia, mainnet],
+  chains: [mantleSepoliaTestnet, mantle],
   connectors: mockAccount
     ? [
         mock({
@@ -62,8 +62,8 @@ export const walletConfig = createConfig({
       ]
     : [injected()],
   transports: {
-    [sepolia.id]: http(),
-    [mainnet.id]: http(),
+    [mantleSepoliaTestnet.id]: http(),
+    [mantle.id]: http(),
   },
 });
 

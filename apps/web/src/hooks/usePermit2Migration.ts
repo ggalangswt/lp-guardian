@@ -11,7 +11,7 @@ import {
 } from "../lib/walletConfig.js";
 import { API_BASE_URL } from "../lib/api.js";
 
-// Builds the EIP-712 PermitSingle for Uniswap's Permit2 contract and
+// Builds the EIP-712 PermitSingle for the Permit2 contract and
 // asks the connected wallet to sign it. The signature is what the
 // migration bundle would attach as the user's authorization to the
 // V3 → swap → V4 sequence — execution itself is out of scope for the
@@ -174,8 +174,8 @@ export function usePermit2Migration() {
   /**
    * Posts the just-signed typed data to the backend so it can verify
    * the signature, compute the digest server-side, and call
-   * LPGuardianAgent.recordMigration to bump the iNFT's
-   * `migrationsTriggered` counter on Robinhood Chain.
+   * LPGuardianAgent.recordMigration to bump the agent's
+   * `migrationsTriggered` counter on Mantle.
    *
    * Best-effort: any HTTP failure surfaces in `error` but does not
    * throw — the migration sign UX is already complete by the time

@@ -43,8 +43,8 @@ function deriveActions(risk: PortfolioRisk, positions: V3PositionRaw[]): Action[
       priority: "high",
       label: `Migrate ${outOfRangePositions} out-of-range position${outOfRangePositions > 1 ? "s" : ""} → V4`,
       detail: pools.length
-        ? `${pools.join(", ")} — fees have stopped accruing. V4 hook can auto-rebalance the range.`
-        : "Positions outside tick range earn zero fees. Migrate to a V4 hook pool to resume compounding.",
+        ? `${pools.join(", ")} — fees have stopped accruing. Mantle strategy route can rebalance the range.`
+        : "Positions outside tick range earn zero fees. Rebalance into a Mantle strategy route to resume compounding.",
       tone: "var(--lp-bleed)",
     });
   }
@@ -53,7 +53,7 @@ function deriveActions(risk: PortfolioRisk, positions: V3PositionRaw[]): Action[
     actions.push({
       priority: "high",
       label: `Consolidate ${dustPositions} dust position${dustPositions > 1 ? "s" : ""}`,
-      detail: `${dustPositions} position${dustPositions > 1 ? "s" : ""} below the $100 dust threshold. Gas cost to manage each exceeds earnings. Close and consolidate into one V4 position.`,
+      detail: `${dustPositions} position${dustPositions > 1 ? "s" : ""} below the $100 dust threshold. Gas cost to manage each exceeds earnings. Close and consolidate into one Mantle LP position.`,
       tone: "var(--lp-bleed)",
     });
   }

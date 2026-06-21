@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { AppHeader } from "../components/AppHeader.js";
 import { ILPanel, type ILBreakdown } from "../components/ILPanel.js";
@@ -76,11 +76,11 @@ const PHASES = [
   { phase: 2, code: "swap.replay",      label: "Replay swaps" },
   { phase: 3, code: "il.reconstruct",   label: "Compute IL" },
   { phase: 4, code: "regime.classify",  label: "Classify regime" },
-  { phase: 5, code: "hooks.discover",   label: "Discover hooks" },
-  { phase: 6, code: "hook.score",       label: "Replay hooks" },
-  { phase: 7, code: "migration.preview",label: "Build migration" },
+  { phase: 5, code: "strategy.discover", label: "Discover routes" },
+  { phase: 6, code: "strategy.score",    label: "Score routes" },
+  { phase: 7, code: "proposal.preview",  label: "Build proposal" },
   { phase: 8, code: "report.upload",    label: "Upload report" },
-  { phase: 9, code: "anchor.robinhood",        label: "Anchor root" },
+  { phase: 9, code: "anchor.mantle",        label: "Anchor root" },
   { phase: 10, code: "verdict.synthesize", label: "TEE verdict" },
 ];
 
@@ -391,6 +391,12 @@ export function Diagnose() {
                     {compactHash(provenance.rootHash)}
                   </code>
                   <CopyButton text={provenance.rootHash} />
+                  <Link
+                    className="lp-btn-primary diagnose-report-btn"
+                    to={`/report/${provenance.rootHash}`}
+                  >
+                    Open report
+                  </Link>
                 </div>
               </RailCard>
             )}

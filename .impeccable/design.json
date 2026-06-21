@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-15T00:00:00+07:00",
+  "title": "Design System: LP Guardian",
+  "extensions": {
+    "colorMeta": {
+      "atrium-fog": {
+        "role": "neutral",
+        "displayName": "Atrium Fog",
+        "canonical": "oklch(0.97 0.018 220)",
+        "tonalRamp": ["oklch(0.18 0.018 220)", "oklch(0.30 0.018 220)", "oklch(0.42 0.018 220)", "oklch(0.55 0.018 220)", "oklch(0.68 0.018 220)", "oklch(0.80 0.018 220)", "oklch(0.90 0.018 220)", "oklch(0.97 0.018 220)"]
+      },
+      "glacial-blue": {
+        "role": "secondary",
+        "displayName": "Glacial Blue",
+        "canonical": "oklch(0.89 0.048 220)",
+        "tonalRamp": ["oklch(0.18 0.048 220)", "oklch(0.30 0.048 220)", "oklch(0.42 0.048 220)", "oklch(0.55 0.048 220)", "oklch(0.68 0.048 220)", "oklch(0.80 0.048 220)", "oklch(0.89 0.048 220)", "oklch(0.96 0.048 220)"]
+      },
+      "beam-blue": {
+        "role": "secondary",
+        "displayName": "Beam Blue",
+        "canonical": "oklch(0.78 0.072 220)",
+        "tonalRamp": ["oklch(0.18 0.072 220)", "oklch(0.30 0.072 220)", "oklch(0.42 0.072 220)", "oklch(0.55 0.072 220)", "oklch(0.68 0.072 220)", "oklch(0.78 0.072 220)", "oklch(0.88 0.072 220)", "oklch(0.96 0.072 220)"]
+      },
+      "deep-pine": {
+        "role": "primary",
+        "displayName": "Deep Pine",
+        "canonical": "oklch(0.31 0.07 170)",
+        "tonalRamp": ["oklch(0.15 0.07 170)", "oklch(0.22 0.07 170)", "oklch(0.31 0.07 170)", "oklch(0.42 0.07 170)", "oklch(0.55 0.07 170)", "oklch(0.68 0.07 170)", "oklch(0.82 0.07 170)", "oklch(0.94 0.07 170)"]
+      },
+      "bybit-gold": {
+        "role": "tertiary",
+        "displayName": "Bybit Gold",
+        "canonical": "oklch(0.78 0.16 80)",
+        "tonalRamp": ["oklch(0.18 0.16 80)", "oklch(0.30 0.16 80)", "oklch(0.42 0.16 80)", "oklch(0.55 0.16 80)", "oklch(0.68 0.16 80)", "oklch(0.78 0.16 80)", "oklch(0.88 0.16 80)", "oklch(0.96 0.16 80)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Poster Display", "purpose": "Hero and deck-scale headlines." },
+      "body": { "displayName": "Diagnostic Body", "purpose": "Readable LP analysis, reports, and UI prose." },
+      "label": { "displayName": "Venue Label", "purpose": "Phase strips, tabs, chips, and provenance stamps." }
+    },
+    "shadows": [
+      { "name": "atrium-lift", "value": "0 18px 60px rgb(7 61 50 / 0.10)", "purpose": "Large modal or hero media only." },
+      { "name": "panel-lift", "value": "0 10px 30px rgb(17 24 23 / 0.08)", "purpose": "Hovered cards, floating nav, dropdowns." }
+    ],
+    "motion": [
+      { "name": "ease-out-quart", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Default hover and entrance easing." },
+      { "name": "beam-drift", "value": "transform 900ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Slow background beam movement only." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Deep-pine venue action for primary flows.",
+      "html": "<button class=\"ds-btn-primary\">Analyze position</button>",
+      "css": ".ds-btn-primary { background: #073d32; color: #fbfeff; border: 1px solid #073d32; border-radius: 6px; padding: 14px 22px; font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; transition: transform 180ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 180ms cubic-bezier(0.25, 1, 0.5, 1), background-color 180ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgb(17 24 23 / 0.08); background: #052f28; } .ds-btn-primary:focus-visible { outline: 2px solid #073d32; outline-offset: 3px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "White bordered alternate action.",
+      "html": "<button class=\"ds-btn-secondary\">View report</button>",
+      "css": ".ds-btn-secondary { background: #fbfeff; color: #073d32; border: 1px solid rgb(7 61 50 / 0.28); border-radius: 6px; padding: 14px 22px; font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; transition: border-color 180ms cubic-bezier(0.25, 1, 0.5, 1), box-shadow 180ms cubic-bezier(0.25, 1, 0.5, 1); } .ds-btn-secondary:hover { border-color: #073d32; box-shadow: 0 10px 30px rgb(17 24 23 / 0.08); } .ds-btn-secondary:focus-visible { outline: 2px solid #073d32; outline-offset: 3px; }"
+    },
+    {
+      "name": "Atrium Card",
+      "kind": "card",
+      "refersTo": "card-atrium",
+      "description": "Crisp white diagnostic surface on pale-blue glass.",
+      "html": "<article class=\"ds-card-atrium\"><p class=\"ds-card-kicker\">VERIFIED</p><h3>Fee APR traces to source</h3><p>Every number keeps its provenance label and stays readable on the bright venue surface.</p></article>",
+      "css": ".ds-card-atrium { background: #fbfeff; color: #111817; border: 1px solid rgb(7 61 50 / 0.14); border-radius: 8px; padding: 24px; font-family: Manrope, system-ui, sans-serif; box-shadow: none; max-width: 340px; } .ds-card-atrium:hover { box-shadow: 0 10px 30px rgb(17 24 23 / 0.08); } .ds-card-atrium h3 { margin: 8px 0 8px; color: #073d32; font-family: Archivo, system-ui, sans-serif; font-size: 24px; line-height: 1.1; } .ds-card-atrium p { margin: 0; color: #556967; line-height: 1.55; } .ds-card-kicker { color: #073d32 !important; font-family: Archivo, system-ui, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }"
+    },
+    {
+      "name": "Phase Chip",
+      "kind": "chip",
+      "refersTo": "chip-phase",
+      "description": "Uppercase phase marker with gold registration tick.",
+      "html": "<span class=\"ds-chip-phase\"><span></span> Phase II</span>",
+      "css": ".ds-chip-phase { display: inline-flex; align-items: center; gap: 8px; background: #eef8fb; color: #073d32; border: 1px solid rgb(143 201 222 / 0.55); border-radius: 9999px; padding: 8px 14px; font-family: Archivo, system-ui, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; } .ds-chip-phase span { width: 8px; height: 8px; background: #f2a900; display: inline-block; }"
+    },
+    {
+      "name": "Sponsor Lockup Row",
+      "kind": "custom",
+      "refersTo": "sponsor-lockup-grid",
+      "description": "Poster-style partner or provenance row with thin rules.",
+      "html": "<div class=\"ds-sponsor-row\"><span></span><strong>Co-Sponsored by</strong><span></span></div>",
+      "css": ".ds-sponsor-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 28px; color: #111817; font-family: Manrope, system-ui, sans-serif; } .ds-sponsor-row span { height: 1px; background: rgb(17 24 23 / 0.55); } .ds-sponsor-row strong { font-size: 18px; font-weight: 600; white-space: nowrap; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Icy Atrium Ledger",
+    "overview": "LP Guardian now borrows from the supplied Turing Test Hackathon poster: an overexposed glass atrium, pale cyan vertical beams, black sponsor marks, and monumental dark-green type. The UI should feel like a premium hackathon title card projected onto frosted architectural glass, not a comic poster, not a terminal, not fintech navy.",
+    "keyCharacteristics": [
+      "Icy light surface with translucent vertical beam fields.",
+      "Massive condensed all-caps headlines in deep pine green.",
+      "Thin divider lines and strict logo-grid rhythm.",
+      "Minimal shadows, mostly atmospheric blur from background imagery.",
+      "Black, pine, and sponsor-gray text on pale cyan glass.",
+      "Small bybit-gold accent only for phase ticks, separators, and active state marks."
+    ],
+    "rules": [
+      { "name": "The Frosted Venue Rule", "body": "Backgrounds must stay light and cold. Dark mode is prohibited for the main redesign.", "section": "colors" },
+      { "name": "The Gold Is A Pin Rule", "body": "Gold is a registration mark, not a theme. Never use it for large fills, gradients, or hero text.", "section": "colors" },
+      { "name": "The Beam Rule", "body": "Use vertical translucent blue fields for atmosphere. Do not use radial glows, blobs, or purple-blue gradients.", "section": "colors" },
+      { "name": "The Poster Scale Rule", "body": "If a landing headline is not uncomfortable at first, it is too small. Let display type dominate the first viewport.", "section": "typography" },
+      { "name": "The No Negative Tracking Rule", "body": "Letter spacing is never negative. The reference image feels engineered, not squeezed.", "section": "typography" },
+      { "name": "The No Comic Shadow Rule", "body": "Hard offset shadows from the previous visual system are forbidden.", "section": "elevation" },
+      { "name": "The One Hairline Rule", "body": "Dividers use 1px ink or deep-pine at low opacity. Never use thick side-stripe borders.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use the supplied image as atmosphere: icy atrium background, vertical beams, deep-green display type, thin sponsor rules.",
+      "Do keep every honesty label visible and textual: VERIFIED, COMPUTED, ESTIMATED, EMULATED, LABELED.",
+      "Do cap body lines at 70ch and keep diagnostic tables dense but airy.",
+      "Do use 1px dividers to organize sponsor-like grids, report metadata, and phase sections.",
+      "Do use Atrium White cards on Atrium Fog backgrounds for product surfaces.",
+      "Do preserve TODO(arch) and TODO(robinhood) honesty in copy and code comments."
+    ],
+    "donts": [
+      "Don't use the previous royal-blue, electric-lime, thick black outline, cyan mascot system.",
+      "Don't use SaaS-cream dashboards (Notion, Linear, Vercel-style white-on-white).",
+      "Don't use navy-and-gold fintech (Coinbase, Bloomberg-ish).",
+      "Don't use generic dark terminal aesthetic.",
+      "Don't use glassmorphism decorative blurs. Background can be luminous; cards must stay crisp.",
+      "Don't use hero-metric template: big number, small label, supporting stats, gradient accent.",
+      "Don't use identical card grids with icon, heading, and three lines of text.",
+      "Don't use side-stripe borders, gradient text, radial blobs, purple glows, or heavy comic shadows."
+    ]
+  }
+}

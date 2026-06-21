@@ -93,10 +93,11 @@ export function AppHeader({ right }: Props) {
             font: "inherit",
             cursor: "pointer",
           } as const;
+          const className = `app-header-nav-link${active ? " app-header-nav-link--active" : ""}`;
           return isExternal ? (
             <a
               key={n.to}
-              className="app-header-nav-link"
+              className={className}
               href={n.to}
               target="_blank"
               rel="noreferrer"
@@ -105,7 +106,7 @@ export function AppHeader({ right }: Props) {
               {n.label}
             </a>
           ) : (
-            <Link key={n.to} className="app-header-nav-link" to={n.to} style={sx}>
+            <Link key={n.to} className={className} to={n.to} style={sx}>
               {n.label}
             </Link>
           );
