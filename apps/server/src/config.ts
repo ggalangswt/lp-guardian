@@ -33,6 +33,8 @@ export interface ServerConfig {
   mantleRpc: string;
   mantleRpcUrl?: string;
   mantleChainId: number;
+  /** Agni Finance V3 NFPM address on Mantle — used for ownership validation in mantle mode. */
+  mantleNfpmAddress?: string;
 
   /** Backend signer used to anchor reports on-chain (0x-prefixed, validated).
    *  Falls back to the deployer key when WALLET_BACKEND_PK is empty. */
@@ -234,6 +236,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     port: Number(env.PORT ?? 3100),
     nodeEnv: env.NODE_ENV ?? "development",
     corsOrigins: list(env.CORS_ORIGINS, [
+      "https://lp-guardian.vercel.app",
       "https://lp-guardian-web.vercel.app",
       "http://localhost:3000",
       "http://localhost:3100",
@@ -263,6 +266,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     mantleRpc,
     mantleRpcUrl: mantleRpc,
     mantleChainId,
+    mantleNfpmAddress:
+      nonEmpty(env.MANTLE_NFPM_ADDRESS) ?? "0x218bf598D1453383e2F4AA7b14fFB9BfB102D637",
 
     anchorSignerPk,
     walletBackendPrivateKey: anchorSignerPk ?? undefined,

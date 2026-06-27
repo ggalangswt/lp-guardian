@@ -17,19 +17,33 @@ export interface AnchorResult {
   onchain: boolean;
 }
 
-/** Anchors a report's rootHash on the Robinhood Chain PortfolioReportRegistry.
+/** Anchors a report's rootHash on-chain (Robinhood in robinhood mode, stub in mantle mode).
  *  Returns a stub txHash (and onchain=false) when no signer is configured or the
  *  write fails, so the pipeline always completes. */
 export async function anchorReport(
   config: ServerConfig,
   input: AnchorInput,
 ): Promise<AnchorResult> {
+  const activeChainId = config.chainMode === "mantle"
+    ? config.mantleChainId
+    : config.robinhoodChainId;
+
+  // In mantle mode, report anchoring goes through the Turing Registry
+  // (recordDecision/recordOutcome in agentOrchestrator). Emit a stub here.
+  if (config.chainMode === "mantle") {
+    return {
+      txHash: stubTxHash(input.rootHash),
+      chainId: activeChainId,
+      onchain: false,
+    };
+  }
+
   const { robinhood, robinhoodWallet, robinhoodAccount } = getChainClients(config);
 
   if (!robinhoodWallet || !robinhoodAccount) {
     return {
       txHash: stubTxHash(input.rootHash),
-      chainId: config.robinhoodChainId,
+      chainId: activeChainId,
       onchain: false,
     };
   }
@@ -69,7 +83,7 @@ export async function anchorReport(
       /* receipt timeout — tx may still confirm */
     }
 
-    return { txHash, chainId: config.robinhoodChainId, onchain: true };
+    return { txHash, chainId: activeChainId, onchain: true };
   } catch (err) {
     console.warn(`[reportRegistry] anchor failed, emitting stub: ${String(err)}`);
     let cause = (err as { cause?: unknown }).cause;
@@ -82,7 +96,7 @@ export async function anchorReport(
     }
     return {
       txHash: stubTxHash(input.rootHash),
-      chainId: config.robinhoodChainId,
+      chainId: activeChainId,
       onchain: false,
     };
   }

@@ -1,8 +1,10 @@
-# BE Data service — portfolio math + TEE signing.
+# BE Data service — portfolio math + developer-key TEE signing.
 #
-# Runs locally (developer-key signing) and inside a Phala Cloud Intel TDX CVM,
-# where the dstack guest-agent socket is bind-mounted and tee/sign.py switches to
-# real hardware attestation automatically (see docker-compose.phala.yml).
+# Default mode: developer-key HMAC-SHA256 signing (TEE_PROVIDER=developer-key).
+# No Phala Cloud hardware required. Deployable on any Docker host (Railway, etc.).
+#
+# To enable real TDX attestation: set TEE_PROVIDER=phala and deploy inside a
+# Phala Cloud CVM with the dstack guest-agent socket bind-mounted.
 FROM python:3.13-slim
 
 WORKDIR /app
@@ -19,6 +21,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN chmod +x entrypoint.sh
 
+# Railway injects PORT dynamically; default 8000 for local dev.
 EXPOSE 8000
+
+ENV TEE_PROVIDER=developer-key
 
 CMD ["./entrypoint.sh"]

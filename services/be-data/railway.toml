@@ -1,0 +1,10 @@
+[build]
+# Railway: set Root Directory = services/be-data in the dashboard.
+# The Dockerfile at that path handles everything.
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

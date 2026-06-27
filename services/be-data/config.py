@@ -102,9 +102,14 @@ class Settings:
     )
 
     # TEE signing
-    # "auto" detects a Phala dstack socket, otherwise falls back to
-    # developer-key. Force with "phala" | "developer-key".
-    tee_provider: str = field(default_factory=lambda: _env("TEE_PROVIDER", "auto"))
+    # TEE signing provider.
+    # "developer-key" → HMAC-SHA256 signing, no hardware required (default for
+    #   Railway / any lightweight server). Labelled EMULATED in responses.
+    # "phala"         → Intel TDX attestation via Phala Cloud dstack CVM.
+    #   Requires the dstack guest-agent socket at runtime.
+    # "auto"          → detects Phala socket at startup; falls back to developer-key.
+    # Override with TEE_PROVIDER env var.
+    tee_provider: str = field(default_factory=lambda: _env("TEE_PROVIDER", "developer-key"))
     developer_signing_key: str = field(
         default_factory=lambda: _env(
             "DEVELOPER_SIGNING_KEY",

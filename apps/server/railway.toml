@@ -1,0 +1,12 @@
+[build]
+# Point Railway at the Dockerfile that lives here.
+# Build context must be the workspace root (configured in Railway dashboard as
+# Root Directory = /). Railway will resolve the Dockerfile path relative to the
+# root of the repo, so set "Dockerfile Path" = apps/server/Dockerfile.
+dockerfilePath = "apps/server/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

@@ -53,14 +53,17 @@ export async function* runDiagnosticPipeline(
   yield { type: "phase.start", phase: 1, label: "Resolve position" };
   const requestedWallet = options.foundationInput?.walletAddress;
 
-  if (requestedWallet) {
+  if (requestedWallet && config.chainMode !== "mantle") {
+    // In Robinhood mode, validate ownership against the Robinhood NFPM.
+    // In Mantle mode we skip this — ownership is validated later via the
+    // Arbitrum V3 position manager inside resolvePositionByTokenId.
     yield {
       type: "tool.call",
       tool: "validateOwnership",
       input: { walletAddress: requestedWallet, tokenId },
     };
     const t0 = Date.now();
-    const ownership = await validateRobinhoodOwnershipForDiagnostic(
+    const ownership = await validateOwnershipForDiagnostic(
       config,
       requestedWallet,
       tokenId,
@@ -483,10 +486,11 @@ export async function* runDiagnosticPipeline(
     txHash: anchor.txHash,
     chainId: anchor.chainId,
   };
+  const anchorChainName = config.chainMode === "mantle" ? "Mantle" : "Robinhood Chain";
   yield {
     type: "narrative",
     text: anchor.onchain
-      ? `Anchored on Robinhood Chain. Anyone can verify rootHash ${upload.rootHash.slice(0, 10)}…`
+      ? `Anchored on ${anchorChainName}. Anyone can verify rootHash ${upload.rootHash.slice(0, 10)}…`
       : `Anchor stubbed (no signer / write failed). rootHash ${upload.rootHash.slice(0, 10)}… still verifiable off-chain.`,
   };
   yield { type: "phase.end", phase: 9, durationMs: Date.now() - t9 };
@@ -528,7 +532,7 @@ interface DiagnosticOwnershipResult {
   reason?: string;
 }
 
-async function validateRobinhoodOwnershipForDiagnostic(
+async function validateOwnershipForDiagnostic(
   config: ServerConfig,
   walletAddress: string,
   tokenId: string,

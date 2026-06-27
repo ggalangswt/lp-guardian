@@ -67,7 +67,7 @@ function positionToWire(
       },
     },
     protocol: "uniswap-v3",
-    chainId: config.robinhoodChainId,
+    chainId: config.chainMode === "mantle" ? config.mantleChainId : config.robinhoodChainId,
     isInRange: poolState?.isInRange,
   };
 }

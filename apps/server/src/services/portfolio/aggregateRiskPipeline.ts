@@ -9,6 +9,7 @@ import {
   computePortfolioRisk,
   type PortfolioRiskInput,
 } from "../robinhood/riskEngine.js";
+import { computeRiskOffchain } from "../../chain/riskEngine.js";
 import {
   buildPortfolioReport,
   hashPayload,
@@ -62,21 +63,38 @@ export async function runAggregateRiskPipeline(
     throw new Error("Real Phala attestation is required for this pipeline.");
   }
 
-  const riskEngineAddress = requireAddress(
-    config.lpGuardianRiskEngineContract,
-    "LPGUARDIAN_RISK_ENGINE_CONTRACT",
-  );
-  const riskOutput = await computePortfolioRisk(
-    publicClient,
-    riskEngineAddress,
-    input.riskInput,
-  );
+  // In mantle mode, risk is computed off-chain (no Robinhood Stylus contract).
+  let riskOutput: Awaited<ReturnType<typeof computePortfolioRisk>>;
+  if (config.chainMode === "mantle") {
+    const offchain = computeRiskOffchain({
+      totalPositions: Number(input.riskInput.totalPositions),
+      outOfRangePositions: Number(input.riskInput.outOfRangePositions),
+      dustPositions: Number(input.riskInput.dustPositions),
+      correlatedExposureBps: Number(input.riskInput.correlatedExposureBps),
+      concentrationBps: Number(input.riskInput.concentrationBps),
+    });
+    riskOutput = {
+      riskScoreBps: BigInt(offchain.riskScoreBps),
+      riskTier: Math.min(offchain.riskTier, 2) as 0 | 1 | 2,
+      recommendedAction: Math.min(offchain.recommendedAction, 2) as 0 | 1 | 2,
+    };
+  } else {
+    const riskEngineAddress = requireAddress(
+      config.lpGuardianRiskEngineContract,
+      "LPGUARDIAN_RISK_ENGINE_CONTRACT",
+    );
+    riskOutput = await computePortfolioRisk(publicClient, riskEngineAddress, input.riskInput);
+  }
+
+  const activeChainId = config.chainMode === "mantle"
+    ? config.mantleChainId
+    : (config.robinhoodChainId ?? 46630);
   const report = buildPortfolioReport({
     schemaVersion: "lp-guardian.report.v1",
     generatedAt: new Date().toISOString(),
     walletAddress: input.walletAddress,
     subjectId: input.subjectId.toString(),
-    chainId: config.robinhoodChainId ?? 46630,
+    chainId: activeChainId,
     ownership: input.ownership,
     riskInput: input.riskInput,
     riskOutput,

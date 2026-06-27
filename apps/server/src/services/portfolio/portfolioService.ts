@@ -1,18 +1,19 @@
 import type { Address, Hex, PublicClient, WalletClient } from "viem";
 import type { ServerConfig } from "../../config.js";
 import { validateNfpmTokenOwnership, type OwnershipValidationResult } from "../ownership.js";
-import { 
-  createRobinhoodPublicClient, 
-  createRobinhoodWalletClient 
+import {
+  createRobinhoodPublicClient,
+  createRobinhoodWalletClient
 } from "../robinhood/client.js";
-import { 
-  buildWalletRiskInputFromRobinhood, 
-  type WalletRiskInputResult 
+import { getChainClients } from "../../chain/clients.js";
+import {
+  buildWalletRiskInputFromRobinhood,
+  type WalletRiskInputResult
 } from "./walletRiskInput.js";
 import { buildWalletRiskInputFromMerchantMoe } from "../merchantMoe/scout.js";
-import { 
-  runAggregateRiskPipeline, 
-  type AggregateRiskPipelineResult 
+import {
+  runAggregateRiskPipeline,
+  type AggregateRiskPipelineResult
 } from "./aggregateRiskPipeline.js";
 import type { PortfolioRiskInput } from "../robinhood/riskEngine.js";
 import type { PortfolioReportSource } from "./report.js";
@@ -51,13 +52,20 @@ export class PortfolioService {
   }
 
   async validateOwnership(walletAddress: Address, tokenId: string) {
-    const publicClient = createRobinhoodPublicClient(this.config);
+    const isMantle = this.config.chainMode === "mantle";
+    const publicClient = isMantle
+      ? getChainClients(this.config).mantle
+      : createRobinhoodPublicClient(this.config);
+    const chainId = isMantle ? this.config.mantleChainId : this.config.robinhoodChainId;
+    const nfpmAddress = isMantle
+      ? (this.config.mantleNfpmAddress as Address | undefined)
+      : (this.config.robinhoodNfpmAddress as Address | undefined);
     const latestBlock = await publicClient.getBlockNumber();
-    
+
     return validateNfpmTokenOwnership({
       client: publicClient,
-      chainId: this.config.robinhoodChainId!,
-      nfpmAddress: this.config.robinhoodNfpmAddress as Address | undefined,
+      chainId,
+      nfpmAddress,
       walletAddress,
       tokenId,
       blockNumber: latestBlock,
@@ -65,14 +73,17 @@ export class PortfolioService {
   }
 
   async diagnose(input: PortfolioDiagnoseInput): Promise<AggregateRiskPipelineResult> {
-    const publicClient = createRobinhoodPublicClient(this.config);
-    const walletClient =
+    const isMantle = this.config.chainMode === "mantle";
+    const clients = getChainClients(this.config);
+    const publicClient: PublicClient = isMantle ? clients.mantle : createRobinhoodPublicClient(this.config);
+    const walletClient: WalletClient | undefined =
       input.publishReport && this.config.walletBackendPrivateKey
-        ? createRobinhoodWalletClient(this.config)
+        ? (isMantle ? clients.mantleWallet ?? undefined : createRobinhoodWalletClient(this.config))
         : undefined;
-        
+
     const latestBlock = await publicClient.getBlockNumber();
-    
+    const activeChainId = isMantle ? this.config.mantleChainId : this.config.robinhoodChainId;
+
     // 1. Validate ownership if tokenId is provided
     let ownership: OwnershipValidationResult | undefined;
     if (input.tokenId) {
@@ -87,7 +98,7 @@ export class PortfolioService {
     if (!input.riskInput) {
       walletRisk = await this.getWalletPositions(input.walletAddress);
       if (walletRisk.scan.currentlyOwnedTokenIds.length === 0) {
-        throw new Error("NO_POSITIONS: No currently owned Robinhood NFPM positions were found for this wallet.");
+        throw new Error("NO_POSITIONS: No LP positions were found for this wallet on the active chain.");
       }
     }
 
@@ -95,7 +106,7 @@ export class PortfolioService {
     const sources: PortfolioReportSource[] = [];
     if (ownership) {
       sources.push({
-        name: "Robinhood NFPM ownerOf",
+        name: isMantle ? "Mantle NFPM ownerOf (Agni)" : "Robinhood NFPM ownerOf",
         label: ownership.label,
         chainId: ownership.chainId,
         blockNumber: ownership.blockNumber,
@@ -117,16 +128,16 @@ export class PortfolioService {
     }
 
     sources.push({
-      name: "PortfolioRiskEngine.computeRisk",
-      label: "VERIFIED",
-      chainId: this.config.robinhoodChainId!,
+      name: isMantle ? "PortfolioRiskEngine.computeRisk (off-chain mirror)" : "PortfolioRiskEngine.computeRisk",
+      label: isMantle ? "COMPUTED" : "VERIFIED",
+      chainId: activeChainId,
       blockNumber: latestBlock,
-      contractAddress: this.config.lpGuardianRiskEngineContract as Address,
+      contractAddress: isMantle ? undefined : (this.config.lpGuardianRiskEngineContract as Address),
     });
 
     // 4. Run pipeline
-    const subjectId = input.subjectId 
-      ? BigInt(input.subjectId) 
+    const subjectId = input.subjectId
+      ? BigInt(input.subjectId)
       : (input.tokenId ? BigInt(input.tokenId) : BigInt(input.walletAddress));
 
     return runAggregateRiskPipeline(
