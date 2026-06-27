@@ -78,7 +78,7 @@ export function createTuringRoute(config: ServerConfig): Hono {
         riskScoreBps: parsed.data.riskScoreBps,
         metadataURI: parsed.data.metadataURI,
       });
-      return c.json(ok(result), 202);
+      return c.json(ok(toJsonSafe(result)), 202);
     } catch (err) {
       return c.json(fail("TURING_DECISION_FAILED", String(err)), 500);
     }
@@ -103,7 +103,7 @@ export function createTuringRoute(config: ServerConfig): Hono {
         outcomeHash: parsed.data.outcomeHash as Hex,
         metadataURI: parsed.data.metadataURI,
       });
-      return c.json(ok(result), 202);
+      return c.json(ok(toJsonSafe(result)), 202);
     } catch (err) {
       return c.json(fail("TURING_OUTCOME_FAILED", String(err)), 500);
     }

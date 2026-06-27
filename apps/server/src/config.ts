@@ -274,7 +274,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 
     beDataServiceUrl: nonEmpty(env.BE_DATA_SERVICE_URL),
     beDataAuthToken: nonEmpty(env.BE_DATA_AUTH_TOKEN),
-    merchantMoeSubgraphUrl: nonEmpty(env.MERCHANT_MOE_SUBGRAPH_URL),
+    merchantMoeSubgraphUrl: nonEmpty(env.MERCHANT_MOE_SUBGRAPH_URL) ?? nonEmpty(env.AGNI_SUBGRAPH_URL),
     theGraphKey: nonEmpty(env.THE_GRAPH_KEY),
     uniswapV3SubgraphId: nonEmpty(env.UNISWAP_V3_SUBGRAPH_ID),
     uniswapV4SubgraphId: nonEmpty(env.UNISWAP_V4_SUBGRAPH_ID),

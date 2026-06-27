@@ -61,7 +61,7 @@ export async function registerTuringAgent(
   const { mantle, mantleWallet, mantleAccount } = requireMantleWriter(config);
   const args = [input.agentURI, input.codeHash] as const;
 
-  await mantle.simulateContract({
+  const { result: agentId } = await mantle.simulateContract({
     account: mantleAccount,
     address: config.turingRegistryAddress,
     abi: lpGuardianTuringRegistryAbi,
@@ -78,7 +78,12 @@ export async function registerTuringAgent(
     args,
   });
 
-  return { txHash, chainId: config.mantleChainId, registry: config.turingRegistryAddress };
+  return {
+    txHash,
+    chainId: config.mantleChainId,
+    registry: config.turingRegistryAddress,
+    id: typeof agentId === "bigint" ? agentId : undefined,
+  };
 }
 
 export async function recordTuringDecision(

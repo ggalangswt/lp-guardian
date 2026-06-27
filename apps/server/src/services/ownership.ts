@@ -12,7 +12,7 @@ export interface OwnershipValidationResult {
   walletAddress: Address;
   tokenId: string;
   chainId: number;
-  source: "rpc";
+  source: "rpc" | "subgraph";
   contractAddress?: Address;
   ownerAddress?: Address;
   blockNumber?: bigint;

@@ -5,7 +5,6 @@ import {
   createRobinhoodPublicClient,
   createRobinhoodWalletClient
 } from "../robinhood/client.js";
-import { getChainClients } from "../../chain/clients.js";
 import {
   buildWalletRiskInputFromRobinhood,
   type WalletRiskInputResult
@@ -51,21 +50,60 @@ export class PortfolioService {
     );
   }
 
-  async validateOwnership(walletAddress: Address, tokenId: string) {
+  async validateOwnership(walletAddress: Address, tokenId: string): Promise<OwnershipValidationResult> {
     const isMantle = this.config.chainMode === "mantle";
-    const publicClient = isMantle
-      ? getChainClients(this.config).mantle
-      : createRobinhoodPublicClient(this.config);
-    const chainId = isMantle ? this.config.mantleChainId : this.config.robinhoodChainId;
-    const nfpmAddress = isMantle
-      ? (this.config.mantleNfpmAddress as Address | undefined)
-      : (this.config.robinhoodNfpmAddress as Address | undefined);
-    const latestBlock = await publicClient.getBlockNumber();
 
+    if (isMantle) {
+      // Mantle mode: ownership comes from the Agni/Merchant Moe subgraph.
+      // The product does not use an NFPM contract on Mantle.
+      const chainId = this.config.mantleChainId;
+      const subgraphUrl = this.config.merchantMoeSubgraphUrl;
+
+      if (!subgraphUrl) {
+        return {
+          status: "unavailable",
+          label: "UNAVAILABLE",
+          walletAddress,
+          tokenId,
+          chainId,
+          source: "subgraph",
+          reason: "Agni subgraph URL is not configured (set AGNI_SUBGRAPH_URL or MERCHANT_MOE_SUBGRAPH_URL).",
+        };
+      }
+
+      try {
+        const walletRisk = await buildWalletRiskInputFromMerchantMoe(this.config, walletAddress);
+        const tokenIdBigInt = BigInt(tokenId);
+        const owned = walletRisk.scan.currentlyOwnedTokenIds.some((id) => id === tokenIdBigInt);
+        return {
+          status: owned ? "verified" : "mismatch",
+          label: owned ? "VERIFIED" : "UNAVAILABLE",
+          walletAddress,
+          tokenId,
+          chainId,
+          source: "subgraph",
+          reason: owned ? undefined : "Token ID not found in wallet's Agni LP positions.",
+        };
+      } catch (error) {
+        return {
+          status: "unavailable",
+          label: "UNAVAILABLE",
+          walletAddress,
+          tokenId,
+          chainId,
+          source: "subgraph",
+          reason: error instanceof Error ? error.message : String(error),
+        };
+      }
+    }
+
+    // Robinhood / legacy path: use NFPM ownerOf()
+    const publicClient = createRobinhoodPublicClient(this.config);
+    const latestBlock = await publicClient.getBlockNumber();
     return validateNfpmTokenOwnership({
       client: publicClient,
-      chainId,
-      nfpmAddress,
+      chainId: this.config.robinhoodChainId,
+      nfpmAddress: this.config.robinhoodNfpmAddress as Address | undefined,
       walletAddress,
       tokenId,
       blockNumber: latestBlock,
