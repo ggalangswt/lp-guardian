@@ -52,24 +52,30 @@ export class PhalaStrategistAdapter implements StrategistAdapter {
 
   constructor(private readonly config: ServerConfig) {}
 
-  async advise(): Promise<StrategistAdvice> {
-    if (
-      !this.config.phalaAgentContract ||
-      !this.config.phalaAttestationVerifier
-    ) {
-      throw new Error(
-        "Real Phala requires PHALA_AGENT_CONTRACT and PHALA_ATTESTATION_VERIFIER.",
-      );
-    }
-    if (!this.config.phalaApiUrl && !this.config.robinhoodRpcUrl) {
-      throw new Error(
-        "Real Phala requires PHALA_API_URL or Robinhood RPC access for contract calls.",
-      );
+  async advise(input?: FoundationRunRequest): Promise<StrategistAdvice> {
+    if (!this.config.phalaApiUrl) {
+      throw new Error("Real Phala strategist requires PHALA_API_URL.");
     }
 
-    throw new Error(
-      "PhalaStrategistAdapter is configured but not wired to the provider call yet. Add the Phala request/verification contract once the SC and Phala interfaces are finalized.",
-    );
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+    };
+    if (this.config.phalaApiKey) {
+      headers.authorization = `Bearer ${this.config.phalaApiKey}`;
+    }
+
+    const response = await fetch(new URL("/strategist", this.config.phalaApiUrl), {
+      method: "POST",
+      headers,
+      body: JSON.stringify(input ?? {}),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Phala strategist returned HTTP ${response.status}.`);
+    }
+
+    const payload = await response.json();
+    return strategistAdviceSchema.parse(payload);
   }
 }
 

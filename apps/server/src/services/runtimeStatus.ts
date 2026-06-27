@@ -37,9 +37,10 @@ export function getRuntimeStatus(config: ServerConfig): RuntimeStatus {
       config.lpGuardianReportsContract,
   );
   const phalaReady = Boolean(
-    config.phalaAgentContract &&
-      config.phalaAttestationVerifier &&
-      (config.phalaApiUrl || config.robinhoodRpcUrl),
+    config.phalaApiUrl ||
+      (config.phalaAgentContract &&
+        config.phalaAttestationVerifier &&
+        config.robinhoodRpcUrl),
   );
   const mantleReady = Boolean(
     config.mantleRpcUrl &&
@@ -83,8 +84,8 @@ export function getRuntimeStatus(config: ServerConfig): RuntimeStatus {
         ? "Report registry config is present; backend auto-publish additionally needs WALLET_BACKEND_PK or an external signer path."
         : "Report anchoring needs report registry address.",
       phalaReady
-        ? "Phala config is present; adapter implementation still needs provider-specific verification calls."
-        : "Phala needs agent contract, attestation verifier, and provider/RPC access.",
+        ? "Phala TDX/CVM config is present; strategist and verdict calls will use PHALA_API_URL when provided."
+        : "Phala needs PHALA_API_URL for CVM calls, or agent contract + attestation verifier + RPC for contract-based verification.",
       mantleReady
         ? "Mantle Turing registry config is present."
         : "Mantle Turing registry needs MANTLE_RPC, MANTLE_CHAIN_ID, and MANTLE_TURING_REGISTRY.",

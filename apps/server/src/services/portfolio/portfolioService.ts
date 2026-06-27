@@ -74,19 +74,18 @@ export class PortfolioService {
 
   async diagnose(input: PortfolioDiagnoseInput): Promise<AggregateRiskPipelineResult> {
     const isMantle = this.config.chainMode === "mantle";
-    const clients = getChainClients(this.config);
-    const publicClient: PublicClient = isMantle ? clients.mantle : createRobinhoodPublicClient(this.config);
-    const walletClient: WalletClient | undefined =
-      input.publishReport && this.config.walletBackendPrivateKey
-        ? (isMantle ? clients.mantleWallet ?? undefined : createRobinhoodWalletClient(this.config))
+    const publicClient = isMantle ? undefined : createRobinhoodPublicClient(this.config);
+    const walletClient =
+      !isMantle && input.publishReport && this.config.walletBackendPrivateKey
+        ? createRobinhoodWalletClient(this.config)
         : undefined;
-
-    const latestBlock = await publicClient.getBlockNumber();
-    const activeChainId = isMantle ? this.config.mantleChainId : this.config.robinhoodChainId;
+    const latestBlock = publicClient
+      ? await publicClient.getBlockNumber()
+      : undefined;
 
     // 1. Validate ownership if tokenId is provided
     let ownership: OwnershipValidationResult | undefined;
-    if (input.tokenId) {
+    if (input.tokenId && !isMantle) {
       ownership = await this.validateOwnership(input.walletAddress, input.tokenId);
       if (ownership.status === "mismatch") {
         throw new Error(`OWNERSHIP_MISMATCH: Token ${input.tokenId} is owned by ${ownership.ownerAddress}, not ${input.walletAddress}.`);
@@ -98,7 +97,8 @@ export class PortfolioService {
     if (!input.riskInput) {
       walletRisk = await this.getWalletPositions(input.walletAddress);
       if (walletRisk.scan.currentlyOwnedTokenIds.length === 0) {
-        throw new Error("NO_POSITIONS: No LP positions were found for this wallet on the active chain.");
+        const chainLabel = isMantle ? "Merchant Moe" : "Robinhood NFPM";
+        throw new Error(`NO_POSITIONS: No currently owned ${chainLabel} positions were found for this wallet.`);
       }
     }
 
@@ -115,6 +115,17 @@ export class PortfolioService {
       });
     }
 
+    if (input.tokenId && isMantle) {
+      sources.push({
+        name: "Mantle LP token ownership validation",
+        label: "UNAVAILABLE",
+        chainId: this.config.mantleChainId,
+        notes: [
+          "Mantle diagnosis is wallet-first; token ownership validation is pending Merchant Moe/RPC position-manager integration.",
+        ],
+      });
+    }
+
     if (walletRisk) {
       sources.push(...walletRisk.sources);
     }
@@ -128,11 +139,20 @@ export class PortfolioService {
     }
 
     sources.push({
-      name: isMantle ? "PortfolioRiskEngine.computeRisk (off-chain mirror)" : "PortfolioRiskEngine.computeRisk",
+      name: isMantle
+        ? "PortfolioRiskEngine.computeRisk off-chain mirror"
+        : "PortfolioRiskEngine.computeRisk",
       label: isMantle ? "COMPUTED" : "VERIFIED",
-      chainId: activeChainId,
+      chainId: isMantle ? this.config.mantleChainId : this.config.robinhoodChainId!,
       blockNumber: latestBlock,
-      contractAddress: isMantle ? undefined : (this.config.lpGuardianRiskEngineContract as Address),
+      contractAddress: isMantle
+        ? undefined
+        : this.config.lpGuardianRiskEngineContract as Address,
+      notes: isMantle
+        ? [
+            "Mantle mode uses the deterministic TypeScript mirror because the Robinhood Stylus risk engine is legacy-only.",
+          ]
+        : undefined,
     });
 
     // 4. Run pipeline

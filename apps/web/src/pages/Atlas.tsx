@@ -24,37 +24,37 @@ const CURATED_DEMO_WALLETS: DemoWallet[] = [
     slot: "portfolio",
     label: "portfolio · 30+",
     address: "0xfd235968e65b0990584585763f837a5b5330e6de",
-    hint: "30 LP positions across 27 pools. Diverse pro LP wallet.",
+    hint: "30 LP positions across 27 pools on Mantle. Diverse pro LP wallet.",
   },
   {
     slot: "bleeding",
     label: "bleeding · 10 out",
     address: "0x8f4daa33706d70677fd69e4e0d47e595bc820e95",
-    hint: "10 USDC/WETH positions. All out-of-range. Around $600k stuck.",
+    hint: "10 USDY/mETH positions. All out-of-range. Around $600k stuck.",
   },
   {
     slot: "mixed",
     label: "mixed · 5 trapped",
     address: "0x4d3e3d1a38505185ba86a1b1f3084195d556bc2a",
-    hint: "5 USDC/WETH positions. Price climbed past the range.",
+    hint: "5 USDY/mETH positions. Price climbed past the range.",
   },
   {
     slot: "whale",
     label: "whale · $20m",
     address: "0x4b296808f414ab3775889fa2863e1d73f958a58e",
-    hint: "$20.9m USDC plus 5,893 WETH. Mature LP, fees above deposits.",
+    hint: "$20.9m USDY plus 5,893 mETH. Mature LP, fees above deposits.",
   },
   {
     slot: "healthy",
     label: "healthy · in-range",
     address: "0x90deceec188094f6f6c1ef446d843f70abfc92cb",
-    hint: "Single USDC/WETH 0.05% position. In-range at 46%.",
+    hint: "Single USDY/mETH 0.05% position. In-range at 46%.",
   },
   {
     slot: "drifting",
     label: "drifting · edge",
     address: "0x7c6ef14f6890d0fda17fb8e4fb6f649f0355c3be",
-    hint: "USDC/WETH 0.05%. Still in-range, but near the edge.",
+    hint: "USDY/mETH 0.05%. Still in-range, but near the edge.",
   },
 ];
 
@@ -94,6 +94,16 @@ function fmtUsd(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}m`;
   if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}k`;
   return `$${n.toFixed(2)}`;
+}
+
+function fmtRawDelta(n: number): string {
+  const abs = Math.abs(n);
+  const formatted = abs >= 1_000_000
+    ? `${(abs / 1_000_000).toFixed(2)}m`
+    : abs >= 1_000
+      ? `${(abs / 1_000).toFixed(1)}k`
+      : abs.toFixed(2);
+  return `${n < 0 ? "-" : "+"}${formatted}`;
 }
 
 function fmtPctBps(bps: number): string {
@@ -239,7 +249,7 @@ export function Atlas() {
                 </div>
                 <div className="atlas-score-strip">
                   <AggStat label="RISK TIER" value={riskTierLabel(data.portfolioRisk)} sub={recommendedActionLabel(data.portfolioRisk.recommendedAction)} tone={riskTierTone(data.portfolioRisk)} />
-                  <AggStat label="NET P&L" value={fmtUsd(stats.totalNet)} sub="fees minus deposited" tone={stats.totalNet >= 0 ? "pos" : "bleed"} />
+                  <AggStat label="FEE GAP" value={fmtRawDelta(stats.totalNet)} sub="fees - deposits (raw token sum)" tone={stats.totalNet >= 0 ? "pos" : "bleed"} />
                   <AggStat label="CORRELATED" value={fmtPctBps(data.portfolioRisk.metrics.correlatedExposureBps)} sub="ETH cluster exposure" tone="toxic" />
                   <AggStat label="CONCENTRATION" value={fmtPctBps(data.portfolioRisk.metrics.concentrationBps)} sub="largest position share" tone="toxic" />
                   <AggStat label="DUST" value={String(data.portfolioRisk.metrics.dustPositions)} sub="positions under threshold" tone={data.portfolioRisk.metrics.dustPositions > 0 ? "toxic" : "pos"} isLast />

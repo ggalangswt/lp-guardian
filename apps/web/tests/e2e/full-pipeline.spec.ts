@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
 // Storage with a verifiable on-chain anchor.
 //
 // Latency budget: ~75 s for the full pipeline (subgraph + IPFS storage
-// + Robinhood Chain + Phala TEE).
+// + Mantle + AWS Nitro Enclaves).
 
 const BLEEDING_TOKEN_ID = "605311";
 

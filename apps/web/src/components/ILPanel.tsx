@@ -54,7 +54,7 @@ export function ILPanel({ breakdown, token1Symbol }: Props) {
         </dd>
       </dl>
       <p className="mt-3 text-[10px] text-slate-500">
-        Computed from Uniswap v3 whitepaper formulas (eq. 6.29 / 6.30) — values
+        Computed from standard CL MM formulas (eq. 6.29 / 6.30) — values
         denominated in {token1Symbol}.
       </p>
     </section>

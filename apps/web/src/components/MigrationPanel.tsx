@@ -262,27 +262,27 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
               disabled={!canMigrate}
               style={{
                 padding: "7px 14px",
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "oklch(0.12 0.02 260)", /* Hard ink color for visibility */
-                background: "oklch(0.985 0.012 300)",
-                border: "2px solid var(--lp-cobalt)",
-                borderRadius: 2,
-                boxShadow: "3px 3px 0 var(--lp-cobalt)",
+                fontFamily: "var(--font-sans)",
+                fontSize: 13,
+                fontWeight: 850,
+                textTransform: "none",
+                letterSpacing: 0,
+                color: "var(--command-green)",
+                background: "var(--beam-blue)",
+                border: 0,
+                borderRadius: 10,
+                boxShadow: "var(--shadow-blue)",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
-                transition: "box-shadow 80ms ease-out, transform 80ms ease-out",
+                transition: "box-shadow 160ms ease-out, transform 160ms ease-out",
               }}
               onMouseEnter={(e) => {
                 if (!canMigrate) return;
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "1px 1px 0 var(--lp-cobalt)";
-                (e.currentTarget as HTMLButtonElement).style.transform = "translate(2px, 2px)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 20px 48px rgba(103, 183, 215, 0.34)";
+                (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "3px 3px 0 var(--lp-cobalt)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-blue)";
                 (e.currentTarget as HTMLButtonElement).style.transform = "";
               }}
             >

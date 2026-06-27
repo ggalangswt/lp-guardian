@@ -77,14 +77,14 @@ export function HooksPanel({ result }: Props) {
     <section className="p-4 rounded-lg border border-slate-700 bg-slate-900/50">
       <header className="flex items-center justify-between gap-2">
         <h2 className="text-xs uppercase tracking-wider text-slate-500">
-          V4 hook candidates
+          Strategy route candidates
         </h2>
         <LabelBadge label={hookLabel} />
       </header>
 
       {count === 0 ? (
         <p className="mt-3 text-slate-500 text-sm">
-          No active V4 hook found for this pair on mainnet.
+          No active Mantle strategy route found for this pair yet.
         </p>
       ) : (
         <>

@@ -13,10 +13,10 @@ const envValue = (key: string, fallback = "") => {
   return value?.trim() || fallback;
 };
 const BACKEND_URL      = envValue("VITE_LPGUARDIAN_API_URL", "http://localhost:3001");
-const AGENT_CONTRACT   = envValue("VITE_LPGUARDIAN_AGENT_CONTRACT", "0x... (iNFT contract — coming soon)");
+const AGENT_CONTRACT   = envValue("VITE_LPGUARDIAN_AGENT_CONTRACT", "0x... (Turing registry — coming soon)");
 const REPORTS_CONTRACT = envValue("VITE_LPGUARDIAN_REPORTS_CONTRACT", "0x9803be5349eedf7c28ac1914b743757ce043b7cc");
 const AGENT_TOKEN_ID   = envValue("VITE_LPGUARDIAN_AGENT_TOKEN_ID", "1");
-const ROBINHOOD_RPC    = envValue("VITE_ROBINHOOD_RPC", "https://rpc.testnet.chain.robinhood.com");
+const MANTLE_RPC       = envValue("VITE_MANTLE_RPC", "https://rpc.sepolia.mantle.xyz");
 
 /* ─── Inline primitives ─────────────────────────────────────────────── */
 
@@ -184,109 +184,99 @@ interface ToolRow {
 
 /* ─── Code strings ───────────────────────────────────────────────────── */
 
-const CODE_MINT = `# 1. set wallet + chain vars
+const CODE_MINT = `# 1. set wallet + Mantle vars
 export YOUR_KEY=0xYOUR_PRIVATE_KEY
-export RPC_URL=https://your-robinhood-rpc
+export RPC_URL=https://rpc.sepolia.mantle.xyz
 export WALLET_ADDRESS=0xYOUR_WALLET_ADDRESS
 
-# 2. mint a 24 h license on Robinhood Chain
-cast send ${AGENT_CONTRACT} \\
-  "mintLicense(uint256,address,uint64)" \\
-  ${AGENT_TOKEN_ID} $WALLET_ADDRESS $(($(date +%s) + 86400)) \\
-  --value 0.1ether \\
-  --rpc-url $RPC_URL \\
+# 2. register a Turing agent decision trail on Mantle
+cast send ${AGENT_CONTRACT} \
+  "registerAgent(string,bytes32)" \
+  "ipfs://lpguardian/agent.json" 0xYOUR_CODE_HASH \
+  --rpc-url $RPC_URL \
   --private-key $YOUR_KEY
 
-# 3. verify the license is active
-cast call ${AGENT_CONTRACT} \\
-  "isLicensed(uint256,address)(bool)" \\
-  ${AGENT_TOKEN_ID} $WALLET_ADDRESS \\
+# 3. verify agent stats
+cast call ${AGENT_CONTRACT} \
+  "getAgentStats(uint256)(uint256,uint256,uint256)" \
+  ${AGENT_TOKEN_ID} \
   --rpc-url $RPC_URL
-# → true`;
+# -> decisions, outcomes, averageScore`;
 
 const CODE_SETUP = `git clone ${REPO_BASE}.git LP-Guardian
 cd LP-Guardian
 pnpm install
-pnpm --filter @lp-guardian/mcp-server build
-node $(pwd)/apps/mcp-server/dist/index.js`;
+pnpm --filter @lp-guardian/skills build
+byreal skills register ./apps/skills/lpguardian.skills.json`;
 
 const CODE_CLAUDE = `{
-  "mcpServers": {
-    "lpguardian": {
-      "command": "node",
-      "args": ["/abs/path/to/LP-Guardian/apps/mcp-server/dist/index.js"],
-      "env": {
-        "LPGUARDIAN_API_URL": "${BACKEND_URL}",
-        "LPGUARDIAN_AGENT_CONTRACT": "${AGENT_CONTRACT}",
-        "LPGUARDIAN_REPORTS_CONTRACT": "${REPORTS_CONTRACT}",
-        "LPGUARDIAN_AGENT_TOKEN_ID": "${AGENT_TOKEN_ID}",
-        "ROBINHOOD_RPC": "${ROBINHOOD_RPC}"
-      }
-    }
+  "namespace": "lpguardian",
+  "version": "1.0.0",
+  "chain": "mantle-sepolia",
+  "skills": ["scout", "strategist", "executor", "sentinel"],
+  "env": {
+    "LPGUARDIAN_API_URL": "${BACKEND_URL}",
+    "LPGUARDIAN_TURING_REGISTRY": "${AGENT_CONTRACT}",
+    "LPGUARDIAN_REPORTS_CONTRACT": "${REPORTS_CONTRACT}",
+    "MANTLE_RPC": "${MANTLE_RPC}"
   }
 }`;
 
-const CODE_TS = `import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+const CODE_TS = `import { createSkillClient } from "@byreal/skills";
 
-const client = new Client({ name: "your-agent", version: "0.1.0" });
-await client.connect(
-  new StdioClientTransport({
-    command: "node",
-    args: ["/abs/path/to/LP-Guardian/apps/mcp-server/dist/index.js"],
-  }),
-);
+const skills = createSkillClient({ namespace: "lpguardian" });
 
-const result = await client.callTool({
-  name: "portfolio_diagnose",
-  arguments: {
-    walletAddress: "0xYourWallet",
-    tokenId: "605311",
+const result = await skills.call("strategist", {
+  walletAddress: "0xYourWallet",
+  protocols: ["merchant-moe", "agni", "fluxion"],
+  constraints: {
+    maxCorrelationBps: 6500,
+    preferAssets: ["mETH", "USDY"],
   },
 });
 
 console.log(result);
-// Product tools return provenance fields: label, warnings,
-// mockUsed, degraded, and the backend result.`;
+// Skills return provenance fields: label, warnings,
+// degraded, turingDecisionId, and the backend result.`;
 
 /* ─── Page ──────────────────────────────────────────────────────────── */
 
 const CURRENT_TOOLS: ToolRow[] = [
   {
-    name: "lp_guardian_ping",
+    name: "lpguardian.ping",
     access: "FREE",
     price: "FREE",
-    description: "Transport liveness check. Useful for confirming the MCP server is reachable before invoking product tools.",
+    description: "Skill registry liveness check. Useful for confirming Byreal Skills can reach the agent before invoking product skills.",
   },
   {
-    name: "portfolio_diagnose",
+    name: "lpguardian.scout",
     access: "GATED",
-    price: "0.1 ETH / 24 h",
-    description: "Runs Scan + Correlate on a wallet portfolio and validates selected token ownership before a real verdict.",
+    price: "MNT gas",
+    description: "Scans Mantle LP positions across Merchant Moe, Agni, and Fluxion before strategy analysis.",
   },
   {
-    name: "portfolio_simulate",
+    name: "lpguardian.strategist",
     access: "GATED",
-    price: "0.1 ETH / 24 h",
-    description: "Runs the deterministic simulation/risk pass through the shared portfolio backend service.",
+    price: "MNT gas",
+    description: "Runs correlation, optimization, and scenario simulation through the Python portfolio service.",
   },
   {
-    name: "portfolio_optimize",
+    name: "lpguardian.executor",
     access: "GATED",
-    price: "0.1 ETH / 24 h",
-    description: "Returns the portfolio-level recommended action from the risk engine without submitting transactions.",
+    price: "MNT gas",
+    description: "Prepares a Permit2 rebalance bundle after user approval and records the decision trail on Mantle.",
   },
   {
-    name: "portfolio_execute",
+    name: "lpguardian.sentinel",
     access: "GATED",
-    price: "0.1 ETH / 24 h",
-    description: "Prepares an execution preview for a selected LP NFT. This build never submits a transaction bundle.",
+    price: "MNT gas",
+    description: "Watches Bybit signals, Chainlink feeds, and on-chain events for anomaly alerts.",
   },
   {
-    name: "portfolio_monitor",
+    name: "lpguardian.snapshot",
     access: "FREE",
     price: "FREE",
-    description: "Fetches a point-in-time wallet portfolio snapshot for monitor and alert agents.",
+    description: "Fetches a point-in-time Mantle portfolio snapshot for benchmark and alert panels.",
   },
 ];
 
@@ -309,8 +299,8 @@ export function Developers() {
       >
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
           <StickerBadge variant="cobalt">DEVELOPERS</StickerBadge>
-          <StickerBadge variant="yellow">MCP · 5 PRODUCT TOOLS</StickerBadge>
-          <StickerBadge variant="magenta" style={{ transform: "rotate(-1.5deg)" }}>0.1 ETH / 24H</StickerBadge>
+          <StickerBadge variant="yellow">BYREAL SKILLS · 4 AGENTS</StickerBadge>
+          <StickerBadge variant="magenta" style={{ transform: "rotate(-1.5deg)" }}>MANTLE TURING</StickerBadge>
         </div>
 
         <h1
@@ -338,9 +328,9 @@ export function Developers() {
             lineHeight: 1.65,
           }}
         >
-          LP Guardian exposes a local MCP server so Claude Desktop, Cursor, and custom
-          agents can call the same live backend that powers the web app. STDIO transport
-          today — hosted SSE on the roadmap.
+          LP Guardian exposes Byreal Skills so wallets and custom agents can hire Scout,
+          Strategist, Executor, and Sentinel against the same Mantle portfolio API that
+          powers the web app.
         </p>
 
         {/* Fact strip — replaces MetricCard hero grid */}
@@ -355,9 +345,9 @@ export function Developers() {
           }}
         >
           {[
-            { label: "TOOLS", value: "6 total", sub: "1 ping · 5 product tools" },
-            { label: "LICENSE", value: "0.1 ETH", sub: "24 h · 80/20 royalty" },
-            { label: "BACKEND", value: "Robinhood Chain", sub: "Robinhood Chain + Arbitrum reads" },
+            { label: "SKILLS", value: "4 agents", sub: "Scout · Strategist · Executor · Sentinel" },
+            { label: "CHAIN", value: "Mantle", sub: "Sepolia now · mainnet ready" },
+            { label: "DATA", value: "Bybit + DeFi", sub: "Merchant Moe · Agni · Fluxion" },
           ].map(({ label, value, sub }, i) => (
             <div
               key={label}
@@ -396,7 +386,7 @@ export function Developers() {
         </div>
       </section>
 
-      {/* ── MCP tools table ───────────────────────────────────────────── */}
+      {/* ── Byreal skills table ───────────────────────────────────────── */}
       <section
         style={{
           position: "relative",
@@ -413,7 +403,7 @@ export function Developers() {
               <div className="lp-window-dot" style={{ background: "var(--lp-toxic)" }} />
               <div className="lp-window-dot" style={{ background: "var(--lp-healthy)" }} />
             </div>
-            <span className="lp-window-title">mcp.tools · 6 registered · STDIO transport</span>
+            <span className="lp-window-title">byreal.skills · 4 agents + snapshot · Mantle ready</span>
           </div>
           <div className="lp-window-body" style={{ padding: 0 }}>
             <table
@@ -426,7 +416,7 @@ export function Developers() {
             >
               <thead>
                 <tr style={{ background: "var(--lp-base-deep)", borderBottom: "1.5px solid var(--lp-border)" }}>
-                  {["TOOL", "ACCESS", "DESCRIPTION"].map((h, i) => (
+                  {["SKILL", "ACCESS", "DESCRIPTION"].map((h, i) => (
                     <th
                       key={h}
                       style={{
@@ -513,7 +503,7 @@ export function Developers() {
       >
 
         {/* Mint a license */}
-        <CodeWindow title="mintlicense.sh · cast send on Robinhood Chain" code={CODE_MINT}>
+        <CodeWindow title="register-agent.sh · cast send on Mantle" code={CODE_MINT}>
           <div
             style={{
               padding: "12px 16px 10px",
@@ -526,25 +516,21 @@ export function Developers() {
             }}
           >
             <p style={{ margin: 0, fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--lp-ink-soft)", lineHeight: 1.6, maxWidth: "64ch" }}>
-              The MCP server checks <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--lp-purple)" }}>isLicensed</code> before
-              running gated tools. Mint a 24-hour license against tokenId {AGENT_TOKEN_ID} on the mainnet agent contract, then pass your wallet
-              address as <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--lp-purple)" }}>caller</code> when invoking gated tools.
-              Payment auto-splits: 80% to iNFT owner, 20% to protocol treasury.
+              The Mantle registry records agent decisions and outcomes for Turing benchmark review.
+              Register agent #{AGENT_TOKEN_ID}, then let Byreal Skills call Scout, Strategist, Executor, and Sentinel
+              with the same report hashes the frontend displays.
             </p>
           </div>
           <CodePre>{CODE_MINT}</CodePre>
         </CodeWindow>
 
         {/* Local setup */}
-        <CodeWindow title="setup.sh · local STDIO server" code={CODE_SETUP}>
+        <CodeWindow title="setup.sh · Byreal Skills scaffold" code={CODE_SETUP}>
           <div
+            className="lp-action-row"
             style={{
               padding: "12px 16px 10px",
               borderBottom: "1px solid var(--lp-border-soft)",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexWrap: "wrap",
             }}
           >
             <a
@@ -554,11 +540,6 @@ export function Developers() {
               className="lp-btn-primary"
               style={{
                 textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "8px 14px",
-                fontSize: 11,
               }}
             >
               Download .zip <PixelArrow />
@@ -570,24 +551,19 @@ export function Developers() {
               className="lp-btn-ghost"
               style={{
                 textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "8px 14px",
-                fontSize: 11,
               }}
             >
               GitHub <PixelArrow />
             </a>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--lp-ink-ghost)" }}>
-              No hosted MCP endpoint today — STDIO only until HTTP/SSE transport ships.
+              Byreal Skills manifest reflects the Mantle submission stack; backend transport can migrate behind it.
             </span>
           </div>
           <CodePre>{CODE_SETUP}</CodePre>
         </CodeWindow>
 
-        {/* Claude Desktop config */}
-        <CodeWindow title="claude_desktop_config.json · MCP server entry" code={CODE_CLAUDE}>
+        {/* Byreal config */}
+        <CodeWindow title="lpguardian.skills.json · Byreal Skills manifest" code={CODE_CLAUDE}>
           <div
             style={{
               padding: "12px 16px 10px",
@@ -595,16 +571,16 @@ export function Developers() {
             }}
           >
             <p style={{ margin: 0, fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--lp-ink-soft)", lineHeight: 1.6, maxWidth: "64ch" }}>
-              Add this entry to your Claude Desktop MCP config. The{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--lp-purple)" }}>ROBINHOOD_RPC</code>{" "}
-              value should point at your Robinhood Chain RPC.
+              Register this Byreal Skills manifest for the Mantle agent stack. The{" "}
+              <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--lp-purple)" }}>MANTLE_RPC</code>{" "}
+              value should point at Mantle Sepolia or Mantle mainnet RPC.
             </p>
           </div>
           <CodePre>{CODE_CLAUDE}</CodePre>
         </CodeWindow>
 
         {/* TypeScript example */}
-        <CodeWindow title="client.ts · TypeScript MCP client" code={CODE_TS}>
+        <CodeWindow title="client.ts · Byreal Skills client" code={CODE_TS}>
           <div
             style={{
               padding: "12px 16px 10px",
@@ -612,9 +588,8 @@ export function Developers() {
             }}
           >
             <p style={{ margin: 0, fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--lp-ink-soft)", lineHeight: 1.6, maxWidth: "64ch" }}>
-              Spawn the MCP server from any TypeScript agent using the{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--lp-purple)" }}>@modelcontextprotocol/sdk</code>.
-              Gated tools return payment metadata when the caller is unlicensed.
+              Call LP Guardian from any TypeScript agent using a Byreal Skills client.
+              Results include provenance labels, warnings, and Turing decision metadata.
             </p>
           </div>
           <CodePre>{CODE_TS}</CodePre>
@@ -633,30 +608,28 @@ export function Developers() {
           <div className="lp-window-body">
             <p style={{ margin: "0 0 14px", fontFamily: "var(--font-sans)", fontSize: 13, color: "var(--lp-ink-soft)", lineHeight: 1.65, maxWidth: "68ch" }}>
               The free verification path is intentionally public. Other agents can resolve a cached report
-              through the portfolio MCP surface. Use{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>portfolio_diagnose</code>{" "}
+              through the Byreal Skills surface. Use{" "}
+              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>lpguardian.strategist</code>{" "}
               for a signed backend report flow and{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>portfolio_monitor</code>{" "}
-              for an agent-readable snapshot. On-chain verification reads the Robinhood Chain{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-purple)" }}>LPGuardianReports</code>{" "}
-              contract at{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-ink-faint)" }}>{REPORTS_CONTRACT}</code>{" "}
-              on Robinhood Chain.
+              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>lpguardian.sentinel</code>{" "}
+              for live monitoring. On-chain verification reads the{" "}
+              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-purple)" }}>LPGuardianTuringRegistry</code>{" "}
+              contract on Mantle.
             </p>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div className="lp-action-row">
               <Link
                 to="/atlas"
                 className="lp-btn-ghost"
-                style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", fontSize: 11 }}
+                style={{ textDecoration: "none" }}
               >
                 Run Atlas scanner <PixelArrow />
               </Link>
               <Link
                 to="/roadmap"
                 className="lp-btn-ghost"
-                style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", fontSize: 11 }}
+                style={{ textDecoration: "none" }}
               >
-                HTTP/SSE roadmap <PixelArrow />
+                Turing roadmap <PixelArrow />
               </Link>
             </div>
           </div>

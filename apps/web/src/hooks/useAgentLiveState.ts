@@ -21,10 +21,10 @@ export const AGENT_CONTRACT_CONFIGURED = rawAgentAddress.length > 0;
 const AGENT_TOKEN_ID = BigInt(
   (import.meta.env.VITE_LPGUARDIAN_AGENT_TOKEN_ID as string | undefined) ?? "1",
 );
-// TODO(robinhood): set VITE_ROBINHOOD_RPC and VITE_ROBINHOOD_CHAIN_ID after chain details confirmed
-const rawRpc = import.meta.env.VITE_ROBINHOOD_RPC as string | undefined;
+// TODO(mantle): set VITE_MANTLE_RPC and VITE_MANTLE_CHAIN_ID after chain details confirmed
+const rawRpc = import.meta.env.VITE_MANTLE_RPC as string | undefined;
 const CHAIN_RPC = rawRpc?.trim() || "";
-const rawChainId = (import.meta.env.VITE_ROBINHOOD_CHAIN_ID as string | undefined) ?? "0";
+const rawChainId = (import.meta.env.VITE_MANTLE_CHAIN_ID as string | undefined) ?? "0";
 const CHAIN_ID = Number(rawChainId);
 
 const ABI = [
@@ -60,11 +60,11 @@ const ABI = [
   },
 ] as const;
 
-const robinhoodChain = defineChain({
-  // TODO(robinhood): fill in correct chain ID and RPC for Robinhood Chain
+const mantleChain = defineChain({
+  // TODO(mantle): fill in correct chain ID and RPC for Mantle
   id: CHAIN_ID,
-  name: "Robinhood Chain",
-  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+  name: "Mantle",
+  nativeCurrency: { name: "MNT", symbol: "MNT", decimals: 18 },
   rpcUrls: { default: { http: [CHAIN_RPC] } },
 });
 
@@ -102,7 +102,7 @@ export function useAgentLiveState(): AgentLiveStateResult {
 
     let cancelled = false;
     const client = createPublicClient({
-      chain: robinhoodChain,
+      chain: mantleChain,
       transport: http(CHAIN_RPC),
     });
 

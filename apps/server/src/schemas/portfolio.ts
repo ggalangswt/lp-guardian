@@ -22,11 +22,19 @@ export const portfolioDiagnoseSchema = z.object({
   walletAddress: z
     .string()
     .regex(/^0x[a-fA-F0-9]{40}$/, "walletAddress must be an EVM address"),
+  protocols: z
+    .array(z.enum(["merchant-moe", "agni", "fluxion", "uniswap-v3"]))
+    .optional(),
   tokenId: bigintStringSchema.optional(),
   subjectId: bigintStringSchema.default("0"),
   riskInput: portfolioRiskInputSchema.optional(),
   riskInputSource: portfolioRiskInputSourceSchema.optional(),
   publishReport: z.boolean().default(false),
+  recordTuringDecision: z.boolean().default(false),
+  recordTuringOutcome: z.boolean().default(false),
+  turingDecisionId: bigintStringSchema.optional(),
+  simulatedPnlBps: z.string().regex(/^-?\d+$/).optional(),
+  simulatedScoreBps: z.number().int().min(0).max(10_000).optional(),
   requirePhala: z.boolean().default(false),
   requireTee: z.boolean().default(false),
   phalaAttestationHash: z

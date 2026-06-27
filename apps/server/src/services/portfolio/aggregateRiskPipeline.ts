@@ -7,9 +7,9 @@ import {
 } from "../robinhood/reportRegistry.js";
 import {
   computePortfolioRisk,
+  computePortfolioRiskOffchain,
   type PortfolioRiskInput,
 } from "../robinhood/riskEngine.js";
-import { computeRiskOffchain } from "../../chain/riskEngine.js";
 import {
   buildPortfolioReport,
   hashPayload,
@@ -44,7 +44,10 @@ export interface AggregateRiskPipelineResult {
       }
     | {
         status: "skipped";
-        reason: "publish-disabled" | "backend-signer-unavailable";
+        reason:
+          | "publish-disabled"
+          | "backend-signer-unavailable"
+          | "mantle-anchor-unavailable";
         args: PublishReportAnchorInput;
       };
 }
@@ -55,7 +58,7 @@ function zeroHash(): Hex {
 
 export async function runAggregateRiskPipeline(
   config: ServerConfig,
-  publicClient: PublicClient,
+  publicClient: PublicClient | undefined,
   walletClient: WalletClient | undefined,
   input: AggregateRiskPipelineInput,
 ): Promise<AggregateRiskPipelineResult> {
@@ -63,38 +66,26 @@ export async function runAggregateRiskPipeline(
     throw new Error("Real Phala attestation is required for this pipeline.");
   }
 
-  // In mantle mode, risk is computed off-chain (no Robinhood Stylus contract).
-  let riskOutput: Awaited<ReturnType<typeof computePortfolioRisk>>;
-  if (config.chainMode === "mantle") {
-    const offchain = computeRiskOffchain({
-      totalPositions: Number(input.riskInput.totalPositions),
-      outOfRangePositions: Number(input.riskInput.outOfRangePositions),
-      dustPositions: Number(input.riskInput.dustPositions),
-      correlatedExposureBps: Number(input.riskInput.correlatedExposureBps),
-      concentrationBps: Number(input.riskInput.concentrationBps),
-    });
-    riskOutput = {
-      riskScoreBps: BigInt(offchain.riskScoreBps),
-      riskTier: Math.min(offchain.riskTier, 2) as 0 | 1 | 2,
-      recommendedAction: Math.min(offchain.recommendedAction, 2) as 0 | 1 | 2,
-    };
-  } else {
-    const riskEngineAddress = requireAddress(
-      config.lpGuardianRiskEngineContract,
-      "LPGUARDIAN_RISK_ENGINE_CONTRACT",
-    );
-    riskOutput = await computePortfolioRisk(publicClient, riskEngineAddress, input.riskInput);
-  }
-
-  const activeChainId = config.chainMode === "mantle"
-    ? config.mantleChainId
-    : (config.robinhoodChainId ?? 46630);
+  const riskOutput =
+    config.chainMode === "mantle"
+      ? computePortfolioRiskOffchain(input.riskInput)
+      : await computePortfolioRisk(
+          publicClient!,
+          requireAddress(
+            config.lpGuardianRiskEngineContract,
+            "LPGUARDIAN_RISK_ENGINE_CONTRACT",
+          ),
+          input.riskInput,
+        );
   const report = buildPortfolioReport({
     schemaVersion: "lp-guardian.report.v1",
     generatedAt: new Date().toISOString(),
     walletAddress: input.walletAddress,
     subjectId: input.subjectId.toString(),
-    chainId: activeChainId,
+    chainId:
+      config.chainMode === "mantle"
+        ? config.mantleChainId
+        : config.robinhoodChainId ?? 46630,
     ownership: input.ownership,
     riskInput: input.riskInput,
     riskOutput,
@@ -113,10 +104,6 @@ export async function runAggregateRiskPipeline(
       reason: "phala-attestation-not-provided",
       reportRoot: report.rootHash,
     });
-  const registryAddress = requireAddress(
-    config.lpGuardianReportsContract,
-    "LPGUARDIAN_REPORTS_CONTRACT",
-  );
   const args: PublishReportAnchorInput = {
     portfolioOwner: input.walletAddress,
     subjectId: input.subjectId,
@@ -136,6 +123,18 @@ export async function runAggregateRiskPipeline(
     };
   }
 
+  if (config.chainMode === "mantle") {
+    return {
+      report,
+      attestationHash: args.attestationHash,
+      anchor: {
+        status: "skipped",
+        reason: "mantle-anchor-unavailable",
+        args,
+      },
+    };
+  }
+
   if (!walletClient) {
     return {
       report,
@@ -148,8 +147,12 @@ export async function runAggregateRiskPipeline(
     };
   }
 
+  const registryAddress = requireAddress(
+    config.lpGuardianReportsContract,
+    "LPGUARDIAN_REPORTS_CONTRACT",
+  );
   const txHash = await publishReportAnchor(
-    publicClient,
+    publicClient!,
     walletClient,
     registryAddress,
     args,

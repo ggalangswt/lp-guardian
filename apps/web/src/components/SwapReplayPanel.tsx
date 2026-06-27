@@ -72,7 +72,7 @@ export function SwapReplayPanel({ result }: Props) {
       <p className="mt-3 text-sm text-slate-400">
         Replayed{" "}
         <span className="text-slate-200 font-mono">{swapCount}</span> real
-        Arbitrum swaps (
+        Mantle swaps (
         <span className="text-emerald-300 font-mono">{inRange}</span> in-range)
         against the position range — counterfactual fees attributed pro-rata by
         injected liquidity share.
@@ -82,7 +82,10 @@ export function SwapReplayPanel({ result }: Props) {
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-mono">
           {result.protocol && (
             <span className="px-2 py-0.5 rounded border border-slate-700 text-slate-300">
-              {result.protocol.replace("uniswap-", "uni ")}
+              {result.protocol === "merchant-moe" ? "Merchant Moe" : 
+               result.protocol === "agni" ? "Agni Finance" :
+               result.protocol === "fluxion" ? "Fluxion" :
+               result.protocol.replace("uniswap-", "uni ")}
             </span>
           )}
           {result.swapSource && result.swapSource !== "none" && (
@@ -130,7 +133,7 @@ export function SwapReplayPanel({ result }: Props) {
         </div>
       )}
 
-      {/* Proof provenance — replay anchored on Robinhood Chain */}
+      {/* Proof provenance — replay anchored on Mantle */}
       <div className="mt-4 pt-3 border-t border-slate-800 space-y-2">
         <h3 className="text-[10px] uppercase tracking-wider text-slate-500">
           on-chain proof
@@ -175,8 +178,8 @@ export function SwapReplayPanel({ result }: Props) {
 
       <p className="mt-3 text-[10px] text-slate-500">
         {anchorIsStub
-          ? "Replay computed off-chain; anchor stubbed (no signer / non-on-chain pool). The proof hashes remain reproducible via SwapReplayVerifier.computeFee."
-          : "Replay proof anchored on Robinhood Chain via SwapReplayVerifier.publishReplay — inputRoot + resultHash committed, reproducible from the same swaps."}
+          ? "Replay computed off-chain; anchor stubbed (no signer / non-on-chain pool). The proof hashes remain reproducible from the same swap window."
+          : "Replay proof anchored on Mantle — inputRoot + resultHash committed, reproducible from the same swaps."}
       </p>
 
       {result.warnings && result.warnings.length > 0 && (

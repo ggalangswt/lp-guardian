@@ -233,7 +233,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     normalizePk(env.WALLET_DEPLOYER_PK);
 
   return {
-    port: Number(env.PORT ?? 3100),
+    port: Number(env.PORT ?? 3001),
     nodeEnv: env.NODE_ENV ?? "development",
     corsOrigins: list(env.CORS_ORIGINS, [
       "https://lp-guardian.vercel.app",

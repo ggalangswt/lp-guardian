@@ -5,21 +5,21 @@ Brand register applies to Landing and Deck (marketing surfaces where design IS t
 
 ## Product Purpose
 
-LP Guardian is a pre-action diagnostic and post-mortem tool for Uniswap v3/v4 concentrated liquidity LPs. Before rebalancing or migrating a position, an LP pastes their NFT position ID and gets a TEE-attested multi-phase analysis: impermanent loss reconstruction, market regime classification (mean-reverting / trending / high-toxic / JIT-dominated), hook risk scoring, and a migration preview. After the run, a report is uploaded to IPFS storage and anchored on-chain — the hash lives in an iNFT (ERC-7857) tied to their agent.
+LP Guardian is a pre-action diagnostic and post-mortem tool for Mantle-native concentrated liquidity LPs. Before rebalancing or migrating a position, an LP pastes their NFT position ID and gets a TEE-attested multi-phase analysis: impermanent loss reconstruction, market regime classification, correlation analysis, and a rebalance proposal. After the run, a report is anchored on-chain via the Turing Benchmark Trail — the decision lives in a registry tied to their agent identity.
 
-The core promise: every number the agent writes is traceable back to the raw input data (AT-4 hallucination guard), and the verdict is TEE-attested — not a marketing chatbot output.
+The core promise: every number the agent writes is traceable back to the raw input data, and the verdict is TEE-attested within AWS Nitro Enclaves.
 
 ## Users
 
-**Primary — the active LP**: runs 3-15 pools simultaneously, checks positions 1-3x daily, knows what IL means, hates gas waste. Semi-technical (can read a tx hash, knows Uniswap v3 tick math at a high level). Main fear: "did I get wrecked by JIT bots without realising?"
+**Primary — the active Mantle LP**: runs pools on Merchant Moe, Agni, or Fluxion. Knows what mETH and USDY are. Hates high slippage. Semi-technical.
 
-**Secondary — the evaluating researcher / hackathon judge**: assessing the architecture (TEE, iNFT, provenance chain), not using it daily. Needs to understand how it works in 90 seconds.
+**Secondary — the evaluating Turing Test judge**: assessing the AI x Web3 convergence (TEE, ElizaOS, Turing Registry), not using it daily. Needs to understand how it benchmarks agent performance in 90 seconds.
 
 **Tertiary — the curious newcomer**: stumbled in from a buildathon post. Doesn't know LP. Needs enough context to understand why this matters.
 
 ## Brand tone
 
-Confident and playful-technical. This is a hackathon project entered in the Arbitrum Open House London Buildathon — it should feel alive, opinionated, and fun, not like a B2B SaaS dashboard. Verbs over nouns. Present tense. Short sentences. No hedge words ("may", "might", "could"). No corporate-speak.
+Confident and playful-technical. This is a hackathon project entered in **The Turing Test Hackathon 2026** — it should feel alive, opinionated, and fun, not like a B2B SaaS dashboard. Verbs over nouns. Present tense. Short sentences. No hedge words. No corporate-speak.
 
 Voice examples:
 - Good: "Your pool is trending. IL is eating your fees faster than you think."
@@ -38,23 +38,34 @@ Voice examples:
 
 ## Visual theme
 
-**Source image**: Arbitrum Open House London hero artwork.
-**Physical scene**: "Hackathon poster pinned to a corkboard in a London co-working space at 2pm on a bright Saturday. The room is loud and full of builders. The poster is confident enough to be mistaken for a music festival lineup."
+**Source image**: Turing Test sponsor poster: ice-white field, pale blue grid, tall translucent cyan beams, deep green headline, black sponsor contrast, one small Bybit-style amber accent, centered event confidence.
+**Physical scene**: "A hackathon judge opens LP Guardian on a bright laptop at the demo table. The screen feels like a clean financial proof terminal printed on icy sponsor-poster paper: precise grid lines, a deep green command layer, crisp cyan beams, and a live diagnostic cockpit floating below the hero."
+
+LP Guardian borrows the clarity, grid discipline, sponsor-poster atmosphere, and proof-product framing from the reference. It must not copy the reference event title, sponsor names, or logo layout. Our own character comes from concentrated-liquidity diagnostics: tick ranges, IL curves, rootHash proofs, provenance labels, and the feeling that every verdict can be audited.
 
 Key elements from source image that carry into LP Guardian:
-- Deep navy → royal blue vertical gradient background (the whole page IS this gradient)
-- Electric lime / yellow-green chunky display headline, nearly as tall as the page allows
-- Thick black outlines on everything (4-6px, no soft edges, no anti-aliased gradients)
-- Cartoon blue mascot characters (smurf-proportioned: big head, small body, chunky limbs), cyan-blue fill, black ink outline
-- Speech bubbles with hard ink borders
-- Location/context chip in lime text on black pill (e.g. "LONDON, UNITED KINGDOM")
-- Hard drop shadows (4px 4px 0 black, no blur) on interactive elements
+- Ice-white to pale-blue vertical grid background, crisp and modern, never blurry
+- Tall translucent cyan beams as structural atmosphere, not fog or bokeh
+- Deep green headline with one italic proof line as the emotional hook
+- Muted beam-cyan primary action with a soft blue glow, matching the pale blue sponsor-poster beam instead of electric app-blue
+- Tiny amber accent used sparingly like the Bybit mark in the reference
+- Large product cockpit preview below the hero, showing LP diagnostics, rootHash, and provenance labels
+- Clean header with brand mark, simple nav, and one filled dashboard/demo button
+- Proof pack section with public URLs, evidence hashes, and live status chips
+- Subtle mint only as verification success, not the main brand color
+
+LP Guardian-specific signature motifs:
+- Tick-range rails and price-band marks in diagrams
+- RootHash and report IDs as visible proof artifacts
+- Honesty labels as text stamps: VERIFIED, COMPUTED, ESTIMATED, EMULATED, LABELED
+- Diagnostic journey words: Position, Replay, IL, Regime, Hook, Verdict, Anchor
+- A "proof pack" preview for the signed report, not generic SaaS stats
 
 ## Hackathon context
 
-**Event**: Arbitrum Open House London Buildathon
-**Chain**: Robinhood Chain (Arbitrum Orbit) — chain config is placeholder + TODO(robinhood) until contract deployment
-**Tech stack preserved from prior phase**: IPFS storage + Phala TEE labels remain in UI with TODO(arch) markers — architecture TBD for Robinhood Chain
+**Event**: The Turing Test Hackathon 2026 (Mantle)
+**Chain**: Mantle Sepolia
+**Tech stack**: ElizaOS, Byreal Skills CLI, AWS Nitro Enclaves, Python/FastAPI math service, Solidity contracts.
 
 ## Honesty labels (must be preserved, non-negotiable)
 
@@ -62,16 +73,16 @@ Every data point the agent emits carries a provenance label. These are not decor
 
 | Label     | Meaning                                             | Design color |
 |-----------|-----------------------------------------------------|--------------|
-| VERIFIED  | Pulled directly from chain / subgraph, no inference | Lime         |
-| COMPUTED  | Deterministic formula from verified inputs          | Paper white  |
-| ESTIMATED | Statistical / heuristic — calibrated but not exact  | Char cyan    |
-| EMULATED  | Fallback — TEE unavailable, stub used               | Accent pink  |
-| LABELED   | Classified by the regime model                      | Surface card |
+| VERIFIED  | Pulled directly from chain / subgraph, no inference | Verifier blue / success mint |
+| COMPUTED  | Deterministic formula from verified inputs          | Navy on paper |
+| ESTIMATED | Statistical / heuristic — calibrated but not exact  | Soft cobalt |
+| EMULATED  | Fallback — TEE unavailable, stub used               | Risk red |
+| LABELED   | Classified by the regime model                      | Slate blue |
 
 ## Strategic principles
 
 1. Every number traces to source. No hallucinated data in the verdict.
 2. Honesty labels are load-bearing UI — never reduce them to decorative dots.
-3. TEE attestation claim is conditional on `stub: false`. If stub, show the warning prominently.
-4. The mascots are characters, not logos. They convey state (loading, error, success), not just decor.
-5. Rebrand is skin-deep until the backend rebuilds for Robinhood Chain. Don't over-promise on-chain features in copy.
+3. TEE attestation claim is backed by AWS Nitro Enclave signatures.
+4. The product cockpit is the new character system. Use tick ranges, rootHash stamps, proof packs, and diagnostic rails instead of mascots.
+5. Focus on Mantle-native yield assets like mETH and USDY as benchmarks.

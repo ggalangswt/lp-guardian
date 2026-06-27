@@ -62,6 +62,50 @@ assert.equal(positionsBody.data.positions.length, 0);
 assert.equal(positionsBody.data.portfolioRiskInput.totalPositions, "0");
 assert.equal(positionsBody.data.sources[0].label, "UNAVAILABLE");
 
+const publicDiagnoseResponse = await app.request("/portfolio/diagnose", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    walletAddress,
+    protocols: ["merchant-moe"],
+  }),
+});
+assert.equal(publicDiagnoseResponse.status, 202);
+const publicDiagnoseBody = await json(publicDiagnoseResponse);
+assert.equal(publicDiagnoseBody.data.status, "queued");
+assert.equal(typeof publicDiagnoseBody.data.correlationId, "string");
+assert.equal(
+  publicDiagnoseBody.data.streamUrl,
+  `/agent/orchestration/stream/${publicDiagnoseBody.data.correlationId}`,
+);
+
+const legacyDiagnoseResponse = await app.request("/api/portfolio/diagnose", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    walletAddress,
+    riskInput: {
+      totalPositions: "2",
+      outOfRangePositions: "1",
+      dustPositions: "0",
+      correlatedExposureBps: "7000",
+      concentrationBps: "6500",
+    },
+    riskInputSource: {
+      name: "smoke supplied Mantle aggregate",
+      label: "COMPUTED",
+    },
+  }),
+});
+assert.equal(legacyDiagnoseResponse.status, 200);
+const legacyDiagnoseBody = await json(legacyDiagnoseResponse);
+assert.equal(legacyDiagnoseBody.data.report.payload.chainId, 5003);
+assert.equal(
+  legacyDiagnoseBody.data.report.payload.sources.at(-1).label,
+  "COMPUTED",
+);
+assert.equal(legacyDiagnoseBody.data.anchor.status, "skipped");
+
 const executePreviewResponse = await app.request("/api/portfolio/execute", {
   method: "POST",
   headers: { "content-type": "application/json" },
@@ -120,6 +164,8 @@ console.log(JSON.stringify({
     discovery: true,
     byrealSkills: true,
     merchantMoeDegradedScout: true,
+    publicPortfolioDiagnoseQueued: true,
+    mantleLegacyDiagnoseOffchain: true,
     executorPreviewDisabled: true,
     sentinelOutcomeSkip: true,
   },

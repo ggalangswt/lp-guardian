@@ -42,7 +42,7 @@ test.describe("developers page", () => {
     await expect(page.getByText("GATED", { exact: true })).toHaveCount(3);
     await expect(page.getByText("FREE", { exact: true })).toHaveCount(6);
 
-    await expect(page.getByText(/Robinhood Chain/i)).toBeVisible();
+    await expect(page.getByText(/Mantle/i)).toBeVisible();
     await expect(page.getByText(/STDIO/i).first()).toBeVisible();
   });
 });

@@ -33,6 +33,17 @@ export interface NfpmPositionSnapshot {
   liquidity: bigint;
   tokensOwed0: bigint;
   tokensOwed1: bigint;
+  protocol?: "merchant-moe" | "agni" | "fluxion" | "uniswap-v3";
+  chainId?: number;
+  poolAddress?: Address;
+  currentTick?: number;
+  tickSpacing?: number;
+  token0Symbol?: string;
+  token1Symbol?: string;
+  token0Decimals?: number;
+  token1Decimals?: number;
+  currentValueUSD?: number;
+  isInRange?: boolean;
 }
 
 export interface TransferScanResult {

@@ -1,18 +1,19 @@
-# LP Guardian
+# LP Guardian — Mantle Turing Test Edition
 
 LP Guardian is an AI-assisted liquidity-position risk system for concentrated LPs. It scans wallet-owned LP positions, verifies ownership, computes portfolio risk, streams a diagnosis through an agent pipeline, and anchors verifiable report provenance on-chain.
 
-The project was built as an end-to-end hackathon stack: React web app, Hono backend, MCP server, ElizaOS-compatible agent runtime, Arbitrum Stylus contracts, and a Mantle Turing registry for agent identity plus on-chain decision/outcome benchmarking.
+The project was built as an end-to-end hackathon stack for **The Turing Test Hackathon 2026** hosted by **Mantle**: React web app, Hono backend, MCP server, ElizaOS-compatible agent runtime, Arbitrum Stylus contracts, and a Mantle Turing registry for agent identity plus on-chain decision/outcome benchmarking.
 
-## Live Demo
+## Live Demo (Mantle Edition)
 
-- Web app: https://lp-guardian-web.vercel.app
-- Backend: https://lp-guardianserver-production.up.railway.app
-- Health check: https://lp-guardianserver-production.up.railway.app/health
+- Web app: [https://lp-guardian-web.vercel.app](https://lp-guardian-web.vercel.app)
+- Backend: [https://lp-guardianserver-production.up.railway.app](https://lp-guardianserver-production.up.railway.app)
+- Health check: [https://lp-guardianserver-production.up.railway.app/health](https://lp-guardianserver-production.up.railway.app/health)
 
 ## What It Does
 
 - Wallet-first LP discovery on Robinhood Chain testnet through NFPM transfer scanning.
+- Mantle-native LP discovery across Merchant Moe, Agni Finance, and Fluxion.
 - Ownership validation with `ownerOf(tokenId)` before diagnosis proceeds.
 - Portfolio-level risk input aggregation from real wallet positions when available.
 - Agent diagnosis pipeline with correlation IDs, state tracking, retries, provenance labels, and SSE streaming.
@@ -20,19 +21,23 @@ The project was built as an end-to-end hackathon stack: React web app, Hono back
 - MCP tools so other AI agents can call LP Guardian through a standard interface.
 - Stylus/Rust contracts for report anchoring, portfolio risk scoring, and swap replay provenance.
 - Mantle Solidity registry for ERC-8004-compatible agent identity, AI decisions, benchmark outcomes, and agent score history.
+- TEE-attested report path for portfolio math and optimization signatures.
+- Bybit price feed and macro-regime integration.
 - React dashboard for wallet lookup, portfolio positions, diagnosis phases, agent state, reports, and migration/rebalance previews.
 
-## Architecture
+## Architecture (Mantle Version)
 
 ```text
-apps/web      React + Vite dashboard
-apps/server   Hono API, portfolio services, agent orchestration, monitor, SSE
+apps/web      React + Vite + Mantle/wagmi dashboard
+apps/server   Node.js API, ElizaOS orchestration, Byreal Skills CLI integration
 apps/mcp-server
-              STDIO MCP adapter over the backend portfolio tools
+              STDIO MCP adapter over the portfolio diagnostic tools
 packages/core Shared TypeScript types and honesty/provenance helpers
 contracts     Arbitrum Stylus Rust contracts deployed on Robinhood Chain testnet
 contracts/evm Mantle Solidity registry for agent identity and Turing benchmark records
 tee-attestor  Local attestation service scaffold for TEE-verdict experiments
+services/be-data
+              Off-chain portfolio math (NumPy/SciPy) + TEE signing service
 ```
 
 High-level flow:
@@ -51,23 +56,21 @@ Wallet address
 
 ## Sponsor And Partner Technology
 
-- Robinhood Chain: primary testnet for LP Guardian contract deployment, report anchoring, and wallet LP reads.
-- Alchemy: RPC provider option for Robinhood Chain testnet.
-- Arbitrum Stylus: Rust/WASM smart contracts for risk and replay verification.
-- MCP: agent-callable portfolio tools through the Model Context Protocol.
-- ElizaOS-compatible runtime: agent runtime bridge with configurable strategist providers.
+- **Mantle**: Primary L2 network for identity, decision anchoring, and yield assets (mETH, USDY).
+- **Bybit**: Real-time price data and trading signals via Bybit API.
+- **Byreal**: Skills CLI integration for agent interoperability.
+- **AWS Nitro Enclaves**: Trusted Execution Environment for verifiable off-chain computation.
+- **Chainlink**: Reliable price oracles on Mantle.
 
-## Deployed Robinhood Chain Contracts
+## Deployed Mantle Sepolia Contracts
 
-Network: Robinhood Chain testnet (`chainId=46630`)
+Network: Mantle Sepolia (`chainId=5003`)
 
 | Contract | Address | Purpose |
 | --- | --- | --- |
-| `PortfolioReportRegistry` | `0x9803be5349eedf7c28ac1914b743757ce043b7cc` | Anchors report roots and provenance |
-| `PortfolioRiskEngine` | `0x8d21329ac9d7785333cb41e187e556a8f7b81ec0` | Deterministic aggregate portfolio risk scoring |
-| `SwapReplayVerifier` | `0x75191d7ca10ea9c36b88b169896d4f258702afa2` | Stores replay proof commitments and spot-check helpers |
-
-Deployment metadata lives in `contracts/deployments/robinhood-testnet.json`.
+| `LPGuardianTuringRegistry` | `0x...` | Anchors agent decisions and benchmark outcomes |
+| `Permit2Bundler` | `0x...` | Secure transaction bundling for rebalances |
+| `TEEAnchor` | `0x...` | Verifies AWS Nitro attestation reports |
 
 ## Mantle Turing Registry
 
@@ -100,7 +103,7 @@ Prerequisites:
 
 - Node.js 20+
 - pnpm 9+
-- Rust toolchain only if you are building the Stylus contracts
+- Foundry (for Solidity contract development)
 
 Install dependencies:
 
@@ -120,28 +123,21 @@ Run the backend:
 pnpm dev:server
 ```
 
-Run the web app in another terminal:
+Run the web app:
 
 ```bash
 pnpm dev:web
 ```
 
-Open the local web app from the Vite output, usually `http://localhost:5173`.
-
 ## Important Environment Variables
-
-For local development, start from `.env.example`.
 
 ```env
 PORT=3001
 NODE_ENV=development
-CORS_ORIGINS=http://localhost:5173,https://lp-guardian-web.vercel.app
 
-ROBINHOOD_RPC=https://robinhood-testnet.g.alchemy.com/v2/<YOUR_API_KEY>
-ROBINHOOD_CHAIN_ID=46630
-ROBINHOOD_NFPM_ADDRESS=0x...
-ROBINHOOD_V3_FACTORY_ADDRESS=0x...
-ROBINHOOD_SCAN_FROM_BLOCK=0
+MANTLE_RPC=https://rpc.sepolia.mantle.xyz
+MANTLE_CHAIN_ID=5003
+LPGUARDIAN_REGISTRY_ADDRESS=0x...
 
 LPGUARDIAN_CHAIN_MODE=mantle
 MANTLE_RPC=https://rpc.mantle.xyz
@@ -151,10 +147,11 @@ MANTLE_TURING_REGISTRY=
 LPGUARDIAN_REPORTS_CONTRACT=0x9803be5349eedf7c28ac1914b743757ce043b7cc
 LPGUARDIAN_RISK_ENGINE_CONTRACT=0x8d21329ac9d7785333cb41e187e556a8f7b81ec0
 LPGUARDIAN_SWAP_REPLAY_CONTRACT=0x75191d7ca10ea9c36b88b169896d4f258702afa2
+BYBIT_API_KEY=...
+AWS_NITRO_ENCLAVE_URL=...
 
-AGENT_RUNTIME=mock
-STRATEGIST_PROVIDER=mock
-GEMINI_API_KEY=
+AGENT_RUNTIME=eliza
+STRATEGIST_PROVIDER=python-service
 ```
 
 Production frontend env should point at the backend base URL without `/api`:
@@ -262,6 +259,9 @@ forge test -vvv
 ## Repository Notes For Judges
 
 - Core application code lives in `apps/server`, `apps/web`, `apps/mcp-server`, `packages/core`, and `contracts`.
+- Track: AI Trading & Strategy + Agentic Wallets & Economy.
+- Innovation: Turing Benchmark Trail recording AI reasoning on-chain.
+- Mantle focus: native protocol support including Merchant Moe.
 - The backend is intentionally wallet-first: token IDs are still supported for compatibility, but ownership is checked before token-specific diagnosis.
 - Mock and fallback paths are kept for demo resilience, but they are labeled in API output and UI state.
 - The Robinhood Chain testnet has no public explorer in this project, so contract addresses and deployment transaction hashes are recorded in the repo.

@@ -18,7 +18,7 @@ function readGitTag(): string {
   }
 }
 
-// TODO(robinhood): update DEFAULT_API_BASE_URL after backend is deployed
+// TODO(mantle): update DEFAULT_API_BASE_URL after backend is deployed
 const DEFAULT_API_BASE_URL = "http://localhost:3001";
 
 function resolveApiBaseUrl(mode: string): string {
@@ -33,7 +33,7 @@ function resolveApiBaseUrl(mode: string): string {
 }
 
 // Load env from the workspace root so VITE_LPGUARDIAN_AGENT_CONTRACT,
-// VITE_LPGUARDIAN_API_URL, VITE_ROBINHOOD_RPC etc. resolved by /agent
+// VITE_LPGUARDIAN_API_URL, VITE_MANTLE_RPC etc. resolved by /agent
 // and the main diagnostic surfaces come from the same env source.
 export default defineConfig(({ mode }) => {
   const apiBaseUrl = resolveApiBaseUrl(mode);

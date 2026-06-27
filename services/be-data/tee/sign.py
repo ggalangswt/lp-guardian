@@ -3,8 +3,8 @@
 Resolves the active provider and signs the report commitment. Detection is
 ``auto`` by default, in priority order:
 
-  1. ``phala``         — a dstack guest-agent socket exists (Phala Cloud TDX CVM)
-  2. ``developer-key`` — no socket; local/dev HMAC fallback
+  1. ``phala`` - a dstack guest-agent socket exists (Phala Cloud TDX CVM)
+  2. ``developer-key`` - no socket; local/dev HMAC fallback
 
 The provider can be forced via ``TEE_PROVIDER`` (phala | developer-key).
 Only a real hardware attestation (phala TDX) is labelled VERIFIED; developer-key
@@ -27,7 +27,6 @@ def resolve_provider() -> str:
     configured = (settings.tee_provider or "auto").lower()
     if configured in ("phala", "developer-key"):
         return configured
-    # auto-detect the Phala dstack CVM socket, else fall back to developer-key.
     if phala.device_present():
         return "phala"
     return "developer-key"
@@ -57,10 +56,9 @@ def sign_report(input_data, output_data, report_hash: str) -> dict:
     provider = resolve_provider()
 
     if provider in _VERIFIED_PROVIDERS:
-        driver = phala
         backend = "Phala dstack TDX"
         try:
-            result = driver.sign(input_data, output_data, report_hash)
+            result = phala.sign(input_data, output_data, report_hash)
             result["provenance"] = _provenance("VERIFIED", f"BE Data /tee/sign ({backend})", [])
             return result
         except Exception as exc:  # noqa: BLE001 - degrade rather than 500

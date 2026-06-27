@@ -67,26 +67,24 @@ function PixelArrow() {
 const PHASES = [
   {
     phase: "NOW",
-    version: "v0.1 · Robinhood Chain",
+    version: "v0.1 · Mantle Turing",
     label: "SHIPPED",
     labelVariant: "healthy" as const,
     accent: "var(--lp-healthy)",
     sticker: "yellow" as StickerVariant,
     stickerText: "LIVE",
-    description: "Hackathon demo on Robinhood Chain. Core diagnostic pipeline is running end-to-end with real chain data and live write-paths.",
+    description: "Turing Test Hackathon 2026 demo on Mantle. Frontend is aligned to the new agent stack while backend migration continues behind the interface.",
     items: [
-      { done: true,  text: "LP NFT resolution from Uniswap subgraph" },
+      { done: true,  text: "Mantle LP portfolio scan from Merchant Moe, Agni, and Fluxion sources" },
       { done: true,  text: "IL reconstruction from tick range + sqrtPriceX96" },
       { done: true,  text: "Pool regime classification" },
-      { done: true,  text: "V4 hook discovery + swap replay (1k swaps)" },
-      { done: true,  text: "Migration preview with Permit2 bundle" },
-      // TODO(arch): TEE — revise after backend redesign
-      { done: true,  text: "Verdict synthesis inside TEE" },
-      // TODO(arch): Storage — revise after backend redesign
-      { done: true,  text: "Report upload to IPFS/Storage" },
-      { done: true,  text: "On-chain anchor tx on Robinhood Chain" },
-      { done: true,  text: "ERC-7857 iNFT — memoryRoot + reputation + counter" },
-      { done: true,  text: "MCP server: 5 product tools + ping" },
+      { done: true,  text: "Correlation matrix + scenario simulation surface" },
+      { done: true,  text: "Rebalance proposal with Permit2 bundle preview" },
+      { done: true,  text: "AWS Nitro attestation UI" },
+      { done: true,  text: "Report artifact publish + rootHash verification" },
+      { done: true,  text: "On-chain anchor tx on Mantle" },
+      { done: true,  text: "LPGuardianTuringRegistry — decisions, outcomes, score trail" },
+      { done: true,  text: "Byreal Skills: Scout, Strategist, Executor, Sentinel" },
       { done: true,  text: "Atlas wallet scanner + 6 demo wallets" },
       { done: true,  text: "Five verification paths from one rootHash" },
     ],
@@ -99,14 +97,14 @@ const PHASES = [
     accent: "var(--lp-cobalt)",
     sticker: "cobalt" as StickerVariant,
     stickerText: "Q3 2026",
-    description: "The base mainnet stack is already live. The next phase adds real execution, richer coverage, and broader monetization on top of the Robinhood Chain deployment.",
+    description: "The next phase adds real execution, richer Mantle coverage, and broader agent coordination on top of the Turing registry.",
     items: [
       { done: false, text: "Real Permit2 migration execution (not preview-only)" },
-      { done: false, text: "Expanded V4 hook registry: 10+ hook families" },
+      { done: false, text: "Expanded Mantle protocol coverage: Merchant Moe, Agni, Fluxion, and RWA yield pairs" },
       { done: false, text: "Batch diagnosis: scan full wallet in one run" },
       { done: false, text: "Range re-entry signals: alert when out-of-range positions can be rebalanced profitably" },
-      { done: false, text: "mintLicense revenue live: 0.1 ETH / 24h with 80/20 split" },
-      { done: false, text: "Expanded mainnet agent monetization + license flows" },
+      { done: false, text: "Byreal Skills deployment with callable agent pricing" },
+      { done: false, text: "Expanded mainnet agent monetization + benchmark scoring" },
       { done: false, text: "Diagnose history: per-wallet report timeline" },
       { done: false, text: "IPFS pinning for all anchored reports" },
     ],
@@ -121,13 +119,13 @@ const PHASES = [
     stickerText: "VISION",
     description: "Multi-protocol diagnostics, agent marketplace, and DAO-grade reporting. LP Guardian as infrastructure, not just a tool.",
     items: [
-      { done: false, text: "Multi-protocol: Aerodrome, Orca, Ambient Finance" },
-      { done: false, text: "Cross-chain: Arbitrum, Base, Optimism LP support" },
-      { done: false, text: "Agent marketplace: other agents calling LP Guardian via MCP" },
+      { done: false, text: "Multi-protocol Mantle strategy coverage with mETH and USDY benchmarks" },
+      { done: false, text: "Cross-chain expansion after Mantle benchmark trail stabilizes" },
+      { done: false, text: "Agent marketplace: other agents calling LP Guardian via Byreal Skills" },
       { done: false, text: "DAO reporting: batch reports for protocol treasuries" },
       { done: false, text: "Report subscriptions: daily / weekly LP health digest" },
       { done: false, text: "Reputation-gated reports: higher reputation = higher report trust tier" },
-      { done: false, text: "Custom hook scoring: protocol teams register their own hooks" },
+      { done: false, text: "Custom strategy scoring: protocol teams register their own action templates" },
       { done: false, text: "On-chain voting: DAO can ratify migration proposals from LP Guardian reports" },
     ],
   },
@@ -198,7 +196,7 @@ export function Roadmap() {
           }}
         >
           LP Guardian is hackathon-native, but not hackathon-shaped. Phase 1 ships the
-          full diagnostic pipeline on Robinhood Chain. Phase 2 focuses on execution
+          full Mantle Turing interface. Phase 2 focuses on execution
           and richer automation on top of that base.
           Phase 3 turns LP Guardian into infrastructure for the agent economy.
         </p>
@@ -377,9 +375,7 @@ export function Roadmap() {
           Diagnose a real position.
         </h2>
         <p style={{ margin: "0 auto 32px", maxWidth: "42ch", fontSize: 14, color: "var(--lp-ink-soft)", lineHeight: 1.6 }}>
-          {/* TODO(arch): Storage labels */}
-          The full pipeline is running on Robinhood Chain. Paste a tokenId or pick
-          a demo wallet.
+          The Mantle-facing interface is ready. Paste a wallet or pick a demo portfolio.
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
           <Link

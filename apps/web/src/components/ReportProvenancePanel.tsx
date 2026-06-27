@@ -23,7 +23,8 @@ function shortHash(hash: string): string {
 }
 
 function explorerUrl(chainId: number, txHash: string): string | null {
-  if (chainId === 46630) return null; // Robinhood testnet has no public explorer yet
+  if (chainId === 5000) return `https://mantlescan.xyz/tx/${txHash}`;
+  if (chainId === 5003) return `https://sepolia.mantlescan.xyz/tx/${txHash}`;
   void txHash;
   return null;
 }
@@ -52,7 +53,7 @@ export function ReportProvenancePanel({ provenance, anchor }: Props) {
   const anchorLink = anchor ? explorerUrl(anchor.chainId, anchor.txHash) : null;
 
   return (
-    <section className="p-4 rounded-lg border border-slate-700 bg-slate-900/50">
+    <section className="report-provenance-panel p-4 rounded-lg border border-slate-700 bg-slate-900/50">
       <header className="flex items-center justify-between gap-2">
         <h2 className="text-xs uppercase tracking-wider text-slate-500">
           Report provenance
@@ -120,20 +121,19 @@ export function ReportProvenancePanel({ provenance, anchor }: Props) {
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <p className="text-[10px] text-slate-500 flex-1">
-          {/* TODO(arch): Storage / Robinhood Chain labels */}
           {fullyVerified
-            ? "Report uploaded to IPFS/Storage and anchored on Robinhood Chain. Anyone can re-download the report from Storage and verify both the rootHash and the on-chain commitment."
+            ? "Report artifact published and anchored on Mantle. Anyone can re-download the report and verify both the rootHash and the on-chain commitment."
             : storageIsStub
-              ? "Stub provenance — the agent emitted a deterministic fingerprint. Configure STORAGE_PRIVATE_KEY and ANCHOR_PRIVATE_KEY on the server to publish to IPFS and Robinhood Chain."
+              ? "Stub provenance — the agent emitted a deterministic fingerprint. Configure publisher and anchor keys on the server to publish the artifact and write to Mantle."
               : anchor
-                ? "Report uploaded to Storage but anchor is a stub — configure ANCHOR_PRIVATE_KEY to write the rootHash to Robinhood Chain."
-                : "Report uploaded to Storage. The merkle rootHash is content-addressed — anchor will follow once phase 9 runs."}
+                ? "Report artifact exists but anchor is a stub — configure the Mantle signer to write the rootHash."
+                : "Report artifact exists. The merkle rootHash is content-addressed — Mantle anchor follows once phase 9 runs."}
         </p>
         <Link
           to={`/report/${rootHash}`}
-          className="text-[10px] text-violet-300 hover:text-violet-200 px-2 py-1 rounded border border-violet-500/40 hover:border-violet-400/60 transition-colors whitespace-nowrap"
+          className="report-provenance-link text-[10px] text-violet-300 hover:text-violet-200 px-2 py-1 rounded border border-violet-500/40 hover:border-violet-400/60 transition-colors whitespace-nowrap"
         >
-          view report →
+          Open report →
         </Link>
       </div>
     </section>

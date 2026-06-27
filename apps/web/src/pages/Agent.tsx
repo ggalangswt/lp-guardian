@@ -63,14 +63,14 @@ function PixelArrow() {
   );
 }
 
-/* ─── MCP tool manifest ──────────────────────────────────────────────── */
+/* ─── Byreal skill manifest ──────────────────────────────────────────── */
 
-const CURRENT_MCP_TOOLS = [
-  { name: "portfolio_diagnose", gated: true, desc: "Scan and correlate a wallet portfolio, with token ownership validation when tokenId is supplied." },
-  { name: "portfolio_simulate", gated: true, desc: "Run deterministic portfolio risk simulation through the shared backend service." },
-  { name: "portfolio_optimize", gated: true, desc: "Return the portfolio-level recommended action from the risk engine." },
-  { name: "portfolio_execute", gated: true, desc: "Prepare an execution preview. This build never submits a transaction bundle." },
-  { name: "portfolio_monitor", gated: false, desc: "Fetch a point-in-time wallet portfolio snapshot for monitor and alert agents." },
+const CURRENT_SKILLS = [
+  { name: "lpguardian.scout", gated: true, desc: "Scan LP positions across Merchant Moe, Agni, and Fluxion." },
+  { name: "lpguardian.strategist", gated: true, desc: "Run correlation, optimization, and strategy simulation." },
+  { name: "lpguardian.executor", gated: true, desc: "Prepare approved Permit2 bundles and record decisions on Mantle." },
+  { name: "lpguardian.sentinel", gated: true, desc: "Watch Bybit signals, Chainlink feeds, and on-chain events." },
+  { name: "lpguardian.snapshot", gated: false, desc: "Fetch a point-in-time Mantle portfolio snapshot for agent panels." },
 ];
 
 function shortHex(h: string, len = 8): string {
@@ -83,18 +83,18 @@ function AgentLivePanel() {
 
   if (!AGENT_CONTRACT_CONFIGURED) {
     return (
-      <WindowPanel title="agent.live · ROBINHOOD CHAIN">
+      <WindowPanel title="agent.live · MANTLE TURING">
         <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
           <p style={{ margin: 0, fontSize: 13, color: "var(--lp-ink-soft)", lineHeight: 1.6 }}>
-            The ERC-7857 iNFT agent contract is being deployed on Robinhood Chain.
+            The LPGuardianTuringRegistry agent contract is being deployed on Mantle.
             Once <code style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>VITE_LPGUARDIAN_AGENT_CONTRACT</code> is
             set, this panel polls live on-chain state every 30 s.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
             {[
-              { label: "PortfolioReportRegistry", addr: "0x9803be5349eedf7c28ac1914b743757ce043b7cc" },
-              { label: "PortfolioRiskEngine",      addr: "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0" },
-              { label: "SwapReplayVerifier",       addr: "0x75191d7ca10ea9c36b88b169896d4f258702afa2" },
+              { label: "LPGuardianTuringRegistry", addr: "0x... (coming soon)" },
+              { label: "Permit2Bundler",           addr: "0x... (coming soon)" },
+              { label: "TEEAnchor",                addr: "0x... (coming soon)" },
             ].map(({ label, addr }) => (
               <div key={addr} style={{ fontFamily: "var(--font-mono)", fontSize: 11, display: "flex", gap: 10, alignItems: "baseline" }}>
                 <span style={{ color: "var(--lp-ink-ghost)", width: 200, flexShrink: 0 }}>{label}</span>
@@ -109,7 +109,7 @@ function AgentLivePanel() {
 
   if (loading) {
     return (
-      <WindowPanel title="agent.live · ROBINHOOD CHAIN">
+      <WindowPanel title="agent.live · MANTLE TURING">
         <div style={{ padding: "16px", color: "var(--lp-ink-soft)", fontSize: 13 }}>
           Loading on-chain agent state…
         </div>
@@ -119,7 +119,7 @@ function AgentLivePanel() {
 
   if (error || !data) {
     return (
-      <WindowPanel title="agent.live · ROBINHOOD CHAIN">
+      <WindowPanel title="agent.live · MANTLE TURING">
         <div style={{ padding: "16px", color: "var(--lp-bleed)", fontSize: 12, fontFamily: "var(--font-mono)" }}>
           {error ?? "No data returned"}
         </div>
@@ -139,7 +139,7 @@ function AgentLivePanel() {
   ];
 
   return (
-    <WindowPanel title="agent.live · ROBINHOOD CHAIN">
+    <WindowPanel title="agent.live · MANTLE TURING">
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, display: "flex", flexDirection: "column", gap: 0 }}>
         {rows.map(({ k, v, accent }) => (
           <div key={k} style={{ display: "flex", gap: 12, padding: "7px 14px", borderBottom: "1px solid var(--lp-border-soft)" }}>
@@ -173,12 +173,12 @@ export function Agent() {
         }}
       >
         <div style={{ display: "flex", alignItems: "flex-start", gap: 24, flexWrap: "wrap", marginBottom: 16 }}>
-          <StickerBadge variant="magenta">ERC-7857</StickerBadge>
-          <StickerBadge variant="cobalt">ROBINHOOD CHAIN</StickerBadge>
+          <StickerBadge variant="magenta">ERC-8004 STYLE</StickerBadge>
+          <StickerBadge variant="cobalt">MANTLE TURING</StickerBadge>
           <StickerBadge variant="yellow">LIVE · ONCHAIN</StickerBadge>
         </div>
 
-        <Cap style={{ marginBottom: 12 }}>AGENT IDENTITY · LP GUARDIAN/01</Cap>
+        <Cap style={{ marginBottom: 12 }}>TURING AGENT · LP GUARDIAN/01</Cap>
 
         <h1
           style={{
@@ -192,7 +192,7 @@ export function Agent() {
             color: "var(--lp-ink)",
           }}
         >
-          The iNFT,{" "}
+          The agent,{" "}
           <span style={{ color: "var(--lp-purple)" }}>in real time.</span>
         </h1>
 
@@ -205,10 +205,9 @@ export function Agent() {
             lineHeight: 1.65,
           }}
         >
-          LP Guardian/01 coordinates portfolio diagnosis, MCP tools, and migration previews
-          for Robinhood Chain LP positions. The iNFT agent identity lives on Robinhood Chain —
-          ERC-7857 contract deployment is in progress and the live panel will activate once
-          the contract address is wired in.
+          LP Guardian/01 coordinates Scout, Strategist, Executor, and Sentinel for Mantle
+          LP positions. The agent identity and benchmark trail live on Mantle through
+          LPGuardianTuringRegistry once the contract address is wired in.
         </p>
       </section>
 
@@ -225,7 +224,7 @@ export function Agent() {
         <AgentLivePanel />
       </section>
 
-      {/* ── Agent economy + MCP tools ─────────────────────────────────── */}
+      {/* ── Agent economy + Byreal skills ─────────────────────────────── */}
       <section
         style={{
           position: "relative",
@@ -246,20 +245,20 @@ export function Agent() {
             {[
               {
                 tag: "01",
-                title: "mintLicense — 0.1 ETH / 24 h",
-                desc: "Pay 0.1 ETH to unlock gated MCP tools for 24 hours. Owner gets 80% of the fee; 20% to protocol treasury.",
+                title: "recordDecision on Mantle",
+                desc: "Each recommendation records scenarioHash, reportHash, confidence, and risk score for Turing benchmark review.",
                 accent: "var(--lp-yellow)",
               },
               {
                 tag: "02",
-                title: "memoryRoot evolves per run",
-                desc: "Every diagnosis writes a new storage blob and updates agents(1).memoryRoot on chain. The agent's memory is an on-chain cursor.",
+                title: "Agent memory evolves per run",
+                desc: "Every diagnosis publishes a report artifact and updates the agent trail with decision and outcome hashes.",
                 accent: "var(--lp-purple)",
               },
               {
                 tag: "03",
-                title: "reputation + migrationsTriggered",
-                desc: "Two on-chain counters increment per run. recordMigration bumps migrationsTriggered only when a user signs the Permit2 bundle.",
+                title: "outcome score + reputation",
+                desc: "recordOutcome closes the loop with pnlBps, scoreBps, and outcomeHash after a strategy path is evaluated.",
                 accent: "var(--lp-healthy)",
               },
             ].map((c) => (
@@ -309,8 +308,8 @@ export function Agent() {
           </div>
         </WindowPanel>
 
-        {/* MCP tools table */}
-        <WindowPanel title="mcp.tools · 5 product tools">
+        {/* Byreal skills table */}
+        <WindowPanel title="byreal.skills · 4 agents + snapshot">
           <div
             style={{
               display: "grid",
@@ -331,7 +330,7 @@ export function Agent() {
                 textTransform: "uppercase",
               }}
             >
-              TOOL
+              SKILL
             </div>
             <div
               style={{
@@ -349,13 +348,13 @@ export function Agent() {
               ACCESS
             </div>
 
-            {CURRENT_MCP_TOOLS.map((tool, i) => (
+            {CURRENT_SKILLS.map((tool, i) => (
               <>
                 <div
                   key={`name-${tool.name}`}
                   style={{
                     padding: "10px 12px",
-                    borderBottom: i < CURRENT_MCP_TOOLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
+                    borderBottom: i < CURRENT_SKILLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
                     background: i % 2 === 0 ? "transparent" : "color-mix(in oklch, var(--lp-purple) 2%, transparent)",
                   }}
                 >
@@ -370,7 +369,7 @@ export function Agent() {
                   key={`access-${tool.name}`}
                   style={{
                     padding: "10px 12px",
-                    borderBottom: i < CURRENT_MCP_TOOLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
+                    borderBottom: i < CURRENT_SKILLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
                     borderLeft: "1px solid var(--lp-border-soft)",
                     background: i % 2 === 0 ? "transparent" : "color-mix(in oklch, var(--lp-purple) 2%, transparent)",
                     display: "flex",
